@@ -76,7 +76,7 @@ from ordnung.ingest.conflicts import (
 )
 from ordnung.ingest.normalize import fold_punctuation
 from ordnung.ingest.verify import PageInput, date_spans
-from ordnung.models import Grounding
+from ordnung.models import ExtractedFact, Grounding
 from ordnung.rules.deadlines import PostingStatement
 
 #: How far (characters) a posting cue may stand from its date in a sentence.
@@ -506,3 +506,39 @@ def posting_statement(pages: Sequence[PageInput], letter_date: date | None = Non
     return PostingStatement(
         day=days[0], quote=first.quote, grounding=sure, other=days[-1], other_quote=last.quote
     )
+
+
+#: A key fact's label that names a posting day: the field labels above, and the plain English a reading may use
+#: ("Posting date", "Date posted", "Mailed on", "Handed to the post"). Never the day of delivery or a deadline.
+_READ_LABEL = re.compile(
+    rf"{_STRONG_LABEL}|{_WEAK_LABEL}|\bpost(?:ing|ed)\b|\bmail(?:ed|ing)\b|\bdispatch\w*|\bhanded\s+to\s+the\s+post",
+    re.IGNORECASE,
+)
+_NOT_READ_LABEL = re.compile(
+    r"zustell\w*|zugang|zugegangen|bekanntgabe|bekannt\s+gegeben|eingang|frist\w*|fällig\w*|deliver\w*|receiv\w*"
+    r"|receipt|deemed|served|due|deadline",
+    re.IGNORECASE,
+)
+
+
+def read_posting_day(facts: Sequence[ExtractedFact], letter_date: date | None) -> date | None:
+    """A posting day later than the letter's date that the reading names among its key facts (a fact labelled as
+    one, whose value is one date that reads one way): the earliest, if several. Never a fact about delivery or a
+    deadline, and never more than a note: the engine names the deadline it would give and lowers the confidence
+    (:func:`ordnung.rules.deadlines._read_posting_note`), it never starts the period there — only code's own find
+    on the page does (:func:`posting_statement`)."""
+    if letter_date is None:
+        return None
+    days = []
+    for fact in facts:
+        label = fold_punctuation(fact.label)
+        if not _READ_LABEL.search(label) or _NOT_READ_LABEL.search(label):
+            continue
+        value = fold_punctuation(fact.value)
+        spans = [(start, end) for start, end, _ in date_spans(value)]
+        if len(set(spans)) != 1:
+            continue
+        day = _one_date(value, *spans[0])
+        if day is not None and day > letter_date:
+            days.append(day)
+    return min(days, default=None)

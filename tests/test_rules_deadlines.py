@@ -12,7 +12,7 @@ rechtsbehelfsbelehrung_fehlerhaft_1_jahr, ``owig67`` = owig_einspruch_bussgeldbe
 from __future__ import annotations
 
 from dataclasses import replace
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -712,26 +712,29 @@ def test_a_stated_posting_day_that_gives_the_same_date_says_so() -> None:
 
 
 #: Guards: a posting day the page states that does NOT start the period (the letter's date does: Fri 20 Nov),
-#: (id, posting day, today, the context's other facts, whether a note names the later deadline).
+#: (id, posting day, today, the context's other facts, the note: none, one naming the later deadline, or one that
+#: says the day is after today and names no deadline).
 POSTING_GUARDS = [
     # before the letter's date: the reading's anchor_date path, never this one
-    ("before-the-letter", "2026-10-14", "2026-10-22", {}, False),
-    ("on-the-letter-s-date", "2026-10-16", "2026-10-22", {}, False),
-    # a letter can't have been posted after the day it is read
-    ("after-today", "2026-10-19", "2026-10-18", {}, True),
+    ("before-the-letter", "2026-10-14", "2026-10-22", {}, None),
+    ("on-the-letter-s-date", "2026-10-16", "2026-10-22", {}, None),
+    # a letter can't have been posted after the day it is read: no deadline from that day can apply
+    ("after-today", "2026-10-19", "2026-10-18", {}, "after today"),
     # more than a week after the letter's date: more likely another date than this posting
-    ("beyond-a-week", "2026-10-24", "2026-10-26", {}, True),
+    ("beyond-a-week", "2026-10-24", "2026-10-26", {}, "deadline"),
     # not an authority's deemed delivery: a private sender's period runs from arrival
-    ("private-sender", "2026-10-19", "2026-10-22", {"private_sender": True, "delivery_scope": None}, False),
+    ("private-sender", "2026-10-19", "2026-10-22", {"private_sender": True, "delivery_scope": None}, None),
     # the sender's procedure law unknown: the earliest plausible date
-    ("scope-unknown", "2026-10-19", "2026-10-22", {"delivery_scope": None}, False),
+    ("scope-unknown", "2026-10-19", "2026-10-22", {"delivery_scope": None}, None),
     # served with a yellow envelope: the envelope's date counts, never a posting day
-    ("formal-service", "2026-10-19", "2026-10-22", {"formal_service": True}, False),
+    ("formal-service", "2026-10-19", "2026-10-22", {"formal_service": True}, None),
+    # a fine is served formally (§ 51 OWiG), also when the reading cites no § 67 OWiG
+    ("fine-without-statute", "2026-10-19", "2026-10-22", {"letter_kind": "fine"}, None),
 ]
 
 
 def test_a_posting_day_the_page_states_is_held_to_its_guards() -> None:
-    def check(_id: str, posted: str, today: str, extra: dict[str, Any], noted: bool) -> None:
+    def check(_id: str, posted: str, today: str, extra: dict[str, Any], noted: str | None) -> None:
         context = ctx(
             today=D(today),
             region="NW",
@@ -743,30 +746,66 @@ def test_a_posting_day_the_page_states_is_held_to_its_guards() -> None:
         plain = compute_due(notice_spec(), replace(context, posting=None, **extra))
         assert receipt.due_date == plain.due_date, receipt.steps
         assert POSTED_ON_LETTER not in receipt.rule_ids and receipt.safe_date == plain.safe_date
-        named = [
-            w for w in receipt.warnings if w.startswith(f"{D(posted):%a} {D(posted).day} Oct 2026 may be")
-        ]
-        assert bool(named) == noted, receipt.warnings
+        named = [w for w in receipt.warnings if w.startswith(f"{D(posted):%a} {D(posted).day} Oct 2026 ")]
+        assert bool(named) == bool(noted), receipt.warnings
         if noted:
             assert receipt.confidence == "medium"
-            assert "If it was posted then, the deadline is" in named[0]
+            assert ("If it was posted then, the deadline is" in named[0]) == (noted == "deadline"), named
+        if noted == "after today":
+            assert named == [
+                "Mon 19 Oct 2026 is named as the day the letter was posted (the letter states it), but that is after "
+                "today (Sun 18 Oct 2026), so it can't be the posting day. We count from the letter's date (Fri 16 "
+                "Oct 2026). Check the posting day on the letter."
+            ]
 
     check_rows(POSTING_GUARDS, check)
 
 
 def test_a_posting_day_the_page_states_never_moves_another_kind_of_period() -> None:
-    """Only an authority's deemed delivery by post: an e-mailed decision, a fine (formal service, § 67 OWiG) and
-    a period from the letter's own date keep their start."""
+    """Only an authority's deemed delivery by post, counted forward: an e-mailed decision, a fine (formal service,
+    § 67 OWiG), a period from the letter's own date and one counted back from delivery (a week before it: the
+    posting day would move that date later too) keep their start."""
     stated = PostingStatement(day=D("2026-10-19"), quote="Tag der Aufgabe zur Post")
     context = ctx(today=D("2026-10-22"), region="NW", document_date="2026-10-16", delivery_scope="vwvfg")
     for spec in (
         notice_spec(delivery_rule="de_admin_electronic"),
         notice_spec(amount=2, unit="weeks", legal_basis="§ 67 OWiG"),
         notice_spec(anchor="document_date", delivery_rule="none"),
+        notice_spec(amount=-1, unit="weeks"),
     ):
         receipt = compute_due(spec, replace(context, posting=stated))
         assert receipt.due_date == compute_due(spec, context).due_date
         assert POSTED_ON_LETTER not in receipt.rule_ids
+
+
+#: (id, letter's date, posting day on the page, due, safe date) for a notice, which never moves off a weekend.
+#: Worked by hand (AO, NW): the 4th day after posting, off a weekend; one month on; the safe date is the earliest
+#: of the working day before a due date on a weekend and the letter's date's own count (and its safe date).
+NOTICE_SAFE_DATES = [
+    # posted Wed 9 Sep → Sun 13 Sep → Mon 14 Sep → Wed 14 Oct; from Sun 6 Sep: Thu 10 Sep → Sat 10 Oct, whose own
+    # safe date is Fri 9 Oct — never the Saturday
+    ("letter-s-count-on-a-saturday", "2026-09-06", "2026-09-09", "2026-10-14", "2026-10-09"),
+    # posted Mon 7 Sep → Fri 11 Sep → Sun 11 Oct (safe: Fri 9 Oct); from Fri 4 Sep: Tue 8 Sep → Thu 8 Oct, the
+    # earlier of the two safe dates
+    ("both-safe-dates", "2026-09-04", "2026-09-07", "2026-10-11", "2026-10-08"),
+]
+
+
+def test_a_stated_posting_day_s_safe_date_is_a_working_day_and_the_earliest() -> None:
+    def check(_id: str, letter: str, posted: str, due: str, safe: str) -> None:
+        stated = PostingStatement(day=D(posted), quote="Tag der Aufgabe zur Post")
+        context = ctx(
+            today=D(posted) + timedelta(days=2),
+            region="NW",
+            document_date=letter,
+            delivery_scope="ao",
+            posting=stated,
+        )
+        receipt = compute_due(notice_spec(nature="notice"), context)
+        assert (receipt.due_date, receipt.safe_date) == (due, safe), receipt.steps
+        assert D(safe).weekday() < 5
+
+    check_rows(NOTICE_SAFE_DATES, check)
 
 
 def test_two_posting_days_on_the_page_count_from_the_earlier() -> None:
@@ -848,6 +887,68 @@ def test_a_later_posting_day_only_the_reading_names_lowers_the_confidence() -> N
     )
     assert (same.due_date, same.confidence) == ("2027-02-04", "high")
     assert same.warnings[0].endswith("Counted from that day the deadline is the same.")
+
+
+def test_a_later_posting_day_after_today_names_no_deadline() -> None:
+    """The reading names Tue 1 Dec as the posting day of a letter dated Fri 16 Oct, read on Sun 25 Oct: it can't have
+    been posted then, so no deadline from that day is named; still one level less sure, and checked."""
+    receipt = compute_due(
+        notice_spec(anchor_date="2026-12-01"),
+        ctx(
+            today=D("2026-10-25"),
+            region="NW",
+            document_date="2026-10-16",
+            delivery_scope="ao",
+            posting=PostingStatement(),
+        ),
+    )
+    assert (receipt.due_date, receipt.confidence) == ("2026-11-20", "medium")
+    assert receipt.warnings == [
+        "Tue 1 Dec 2026 is named as the day the letter was posted (Claude's reading of the letter names it, but we "
+        "didn't find it on the letter), but that is after today (Sun 25 Oct 2026), so it can't be the posting day. "
+        "We count from the letter's date (Fri 16 Oct 2026). Check the posting day on the letter."
+    ]
+
+
+def test_a_later_posting_day_the_page_contradicts_says_so() -> None:
+    """The page states the letter's own date (Fri 16 Oct) as its posting day, the reading a later one (Mon 19 Oct):
+    the date stays the letter's date's, and the note says the letter states another day, not that it says none."""
+    receipt = compute_due(
+        notice_spec(anchor_date="2026-10-19"),
+        ctx(
+            today=D("2026-10-22"),
+            region="NW",
+            document_date="2026-10-16",
+            delivery_scope="ao",
+            posting=PostingStatement(day=D("2026-10-16"), quote="Tag der Aufgabe zur Post: 16.10.2026"),
+        ),
+    )
+    assert (receipt.due_date, receipt.confidence) == ("2026-11-20", "medium")
+    assert receipt.warnings[0].startswith(
+        "Mon 19 Oct 2026 may be the day the letter was posted, later than its date (Fri 16 Oct 2026): Claude's "
+        "reading of the letter names it, but the letter states Fri 16 Oct 2026 as its posting day. If it was posted "
+        "then, the deadline is Mon 23 Nov 2026"
+    )
+
+
+def test_a_later_posting_day_among_the_reading_s_key_facts_is_named_too() -> None:
+    """The reading names the later posting day only among its key facts (``RuleContext.posting_read``), not as the
+    period's start: the same note as for ``anchor_date``, one level less sure. Without pages read (the rules tools)
+    nothing changes."""
+    context = ctx(
+        today=D("2026-10-22"),
+        region="NW",
+        document_date="2026-10-16",
+        delivery_scope="ao",
+        posting=PostingStatement(),
+        posting_read=D("2026-10-19"),
+    )
+    receipt = compute_due(notice_spec(), context)
+    assert (receipt.due_date, receipt.confidence) == ("2026-11-20", "medium")
+    assert receipt.warnings[0].startswith("Mon 19 Oct 2026 may be the day the letter was posted")
+    assert "the deadline is Mon 23 Nov 2026" in receipt.warnings[0]
+    tools = compute_due(notice_spec(), replace(context, posting=None))
+    assert (tools.due_date, tools.confidence, tools.warnings) == ("2026-11-20", "high", [])
 
 
 def test_earlier_posting_date_is_used() -> None:

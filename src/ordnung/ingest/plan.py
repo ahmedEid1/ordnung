@@ -60,7 +60,7 @@ from ordnung.ingest.gaps import (
 from ordnung.ingest.gaps import needs_check as needs_check
 from ordnung.ingest.link import LinkResult
 from ordnung.ingest.normalize import normalise_with_map
-from ordnung.ingest.posting import posting_statement
+from ordnung.ingest.posting import posting_statement, read_posting_day
 from ordnung.ingest.verify import (
     AMOUNT_NOT_IN_QUOTE,
     DATE_NOT_IN_QUOTE,
@@ -659,8 +659,10 @@ def rule_context(
     was filed as: its dates never use a delivery fiction and are never ``high``. A lease's payments are
     rent (``RuleContext.rent``, :mod:`ordnung.recurrence` point 8). The posting day the letter's ``pages`` state
     for it (:func:`~ordnung.ingest.posting.posting_statement`) may start an authority's deemed delivery
-    (``RuleContext.posting``); without pages nothing was read, and a later posting day only the reading names
-    stays a note, as in the rules tools.
+    (``RuleContext.posting``); without pages nothing was read. A later posting day only the reading names, as the
+    period's start or among its key facts (``RuleContext.posting_read``), never moves the date: with pages read the
+    receipt names the deadline it would give, one level less sure; without pages it stays a note, as in the rules
+    tools.
     """
     sender = extraction.sender
     kind = party.kind if party else (sender.kind if sender else None)
@@ -696,6 +698,7 @@ def rule_context(
         rent=(filed_as or letter_kind(extraction)) == "rent_lease",
         formal_service=formally_served(pages),
         posting=posting_statement(pages, parse_date(extraction.document_date)),
+        posting_read=read_posting_day(extraction.key_facts, parse_date(extraction.document_date)),
     )
 
 

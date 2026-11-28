@@ -19,8 +19,8 @@ from fixtures_llm import Letter
 from helpers_tables import check_rows
 from ordnung import clock
 from ordnung.ingest.plan import compute_item, needs_check, verify_extraction
-from ordnung.ingest.posting import posting_statement
-from ordnung.models import DateSpec, DocumentExtraction, ExtractedItem
+from ordnung.ingest.posting import posting_statement, read_posting_day
+from ordnung.models import DateSpec, DocumentExtraction, ExtractedFact, ExtractedItem
 from ordnung.rules.deadlines import POSTED_ON_LETTER, TWO_POSTING_DAYS, PostingStatement, RuleContext
 from test_api_support import ApiRouter, api_for
 
@@ -363,6 +363,31 @@ def test_two_posting_days_that_differ_are_both_kept() -> None:
     assert agree is not None and (agree.day, agree.other) == (D("2026-10-19"), None)
 
 
+#: (id, a key fact's label, its value, the later posting day it names — or None).
+KEY_FACTS = [
+    ("german-label", "Tag der Aufgabe zur Post", "19.10.2026", "2026-10-19"),
+    ("english-label", "Posting date", "19 October 2026", "2026-10-19"),
+    ("dispatch", "Date of dispatch", "Mon 19 Oct 2026", "2026-10-19"),
+    ("on-the-letter-s-date", "Versanddatum", "16.10.2026", None),
+    ("the-delivery-day", "Deemed delivery (4th day after posting)", "23.10.2026", None),
+    ("a-deadline", "Objection deadline", "23.11.2026", None),
+    ("not-a-posting-label", "Tax year", "2025", None),
+    ("two-dates", "Versanddatum", "19.10.2026 / 20.10.2026", None),
+]
+
+
+def test_a_later_posting_day_among_the_reading_s_key_facts() -> None:
+    """A key fact labelled as a posting day, one date later than the letter's: only ever a note for the engine
+    (``RuleContext.posting_read``); never a fact about delivery or a deadline."""
+
+    def check(_id: str, label: str, value: str, day: str | None) -> None:
+        fact = ExtractedFact(label=label, value=value, quote=value)
+        assert read_posting_day([fact], LETTER) == (D(day) if day else None)
+
+    check_rows(KEY_FACTS, check)
+    assert read_posting_day([ExtractedFact(label="Versanddatum", value="19.10.2026", quote="")], None) is None
+
+
 def test_without_pages_nothing_was_read() -> None:
     """No pages (a to-do added by hand, a context built without the letter): ``None``, so the engine keeps
     today's behaviour, as for the rules tools."""
@@ -533,3 +558,39 @@ async def test_a_card_s_dispatch_day_never_moves_the_letter_s_deadline(data_dir:
         [objection] = [item for item in api.ctx.store.list_items(doc_id=doc_id) if item.kind == "deadline"]
         assert objection.due_date == "2026-11-20"
         assert objection.computation is not None and POSTED_ON_LETTER not in objection.computation.rule_ids
+
+
+@pytest.mark.usefixtures("pinned_today")
+async def test_a_posting_day_only_the_reading_s_key_facts_name_is_named_on_the_to_do(data_dir: Path) -> None:
+    """Through the app's own path: the page states no posting day, the reading names one (Mon 19 Oct) only among
+    its key facts. The date stays the letter's date's (Fri 20 Nov), the receipt names the later deadline (Mon 23
+    Nov), and the to-do is one level less sure."""
+    letter = Letter(
+        marker="Faktprobe",
+        pages=(
+            tuple(
+                line.replace("Aufgabeprobe", "Faktprobe")
+                for line in POSTED_LATER.pages[0]
+                if not line.startswith("Tag der Aufgabe")
+            ),
+        ),
+        payload={
+            **POSTED_LATER.payload,
+            "key_facts": [
+                {"label": "Tag der Aufgabe zur Post", "value": "19.10.2026", "quote": "19.10.2026"}
+            ],
+        },
+    )
+    router = ApiRouter()
+    router.letters = (letter, *router.letters)
+    router.payloads[letter.marker] = letter.extraction()
+    async with api_for(data_dir, router=router) as api:
+        doc_id = (await api.upload(("fakt.pdf", letter.pdf())))["documents"][0]["id"]
+        await api.read_all()
+        [objection] = [item for item in api.ctx.store.list_items(doc_id=doc_id) if item.kind == "deadline"]
+        assert objection.due_date == "2026-11-20"
+        receipt = objection.computation
+        assert receipt is not None and receipt.confidence == "medium"
+        assert any("the deadline is Mon 23 Nov 2026" in warning for warning in receipt.warnings), (
+            receipt.warnings
+        )

@@ -85,7 +85,7 @@ from ordnung.ingest.plan import (
     remedy_warnings,
     verify_extraction,
 )
-from ordnung.ingest.posting import posting_statement
+from ordnung.ingest.posting import posting_statement, read_posting_day
 from ordnung.ingest.text import PageText, extract_pdf_pages, page_delimited
 from ordnung.ingest.transcribe import PageTranscript, transcribe_page
 from ordnung.ingest.verify import parse_amounts
@@ -381,6 +381,7 @@ def ordnung_rule_context(
         labour_court=is_labour_court(name),
         formal_service=formally_served(pages),
         posting=posting_statement(pages, parse_iso(extraction.document_date)),
+        posting_read=read_posting_day(extraction.key_facts, parse_iso(extraction.document_date)),
     )
 
 
