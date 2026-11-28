@@ -110,4 +110,10 @@ so `RuleContext.posting` stays unset and a later posting day stays the note it w
   the final split's layout had been diagnosed in codes (no letter's text read); every number it changes on
   holdout, holdout2 and the final split is re-scored, not held-out, as is every number obtained on a split
   already seen.
+- The closed forms (Addenda 5 and 6 of the fix's brief) give the same replay to the item: every posting day found
+  before is found again, the dev and test ones by the sentence form "Dieser Bescheid wurde am … zur Post gegeben",
+  the others by a field under its label. That sentence stands there after a notice's heading and its colon; the
+  short list of headings a sentence may follow ("Hinweis:", "Hinweis zur Bekanntgabe:", "Bitte beachten Sie:", …)
+  was written after a codes-only check showed that shape on those letters (no letter's text read), so the dev and
+  test numbers it keeps are re-scored too.
 - The rule it replaces stays in force where no page was read (the rules tools, a to-do added by hand).

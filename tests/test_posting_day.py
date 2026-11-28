@@ -686,6 +686,11 @@ SENTENCES = [
     ("wurde-das-schreiben", "Das Schreiben wurde am 19.10.2026 abgesandt.", "wurde"),
     ("wurde-a-compound", "Dieser Widerspruchsbescheid wurde am 19.10.2026 zur Post gegeben.", "wurde"),
     ("wurde-aufgegeben", "Dieser Steuerbescheid wurde am 19.10.2026 zur Post aufgegeben.", "wurde"),
+    # every listed compound, each the letter naming itself after "Dieser"
+    *(
+        (f"wurde-dieser-{noun.casefold()}", f"Dieser {noun} wurde am 19.10.2026 zur Post gegeben.", "wurde")
+        for noun in ("Festsetzungsbescheid", "Leistungsbescheid", "Gebührenbescheid", "Beitragsbescheid")
+    ),
     ("wurde-a-short-weekday", "Der Bescheid wurde am Mo., 19.10.2026 zur Post gegeben.", "wurde"),
     ("wurde-a-weekday-and-den", "Der Bescheid wurde am Montag, den 19.10.2026 versandt.", "wurde"),
     ("wurde-without-a-full-stop", "Dieser Bescheid wurde am 19.10.2026 zur Post gegeben", "wurde"),
