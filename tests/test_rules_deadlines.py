@@ -737,6 +737,28 @@ POSTING_GUARDS = [
         (f"private-law-{kind}", "2026-10-19", "2026-10-22", {"letter_kind": kind}, None)
         for kind in ("dismissal", "landlord_notice", "rent_increase", "operating_costs")
     ),
+    # and the contract-law letters, also a public employer's or a university's
+    *(
+        (f"private-law-{kind}", "2026-10-19", "2026-10-22", {"letter_kind": kind}, None)
+        for kind in (
+            "contract",
+            "contract_change",
+            "price_increase",
+            "cancellation_confirmation",
+            "insurance",
+            "employment",
+            "rent_lease",
+            "bank_letter",
+        )
+    ),
+    # served with a proof of receipt under the VwZG (a Rückschein, an Empfangsbekenntnis): it counts from that receipt
+    (
+        "served-with-a-receipt",
+        "2026-10-19",
+        "2026-10-22",
+        {"posting": PostingStatement(day=D("2026-10-19"), quote="Tag der Aufgabe zur Post", formal=True)},
+        None,
+    ),
 ]
 
 
@@ -750,7 +772,7 @@ def test_a_posting_day_the_page_states_is_held_to_its_guards() -> None:
             posting=PostingStatement(day=D(posted), quote="Tag der Aufgabe zur Post"),
         )
         receipt = compute_due(notice_spec(), replace(context, **extra))
-        plain = compute_due(notice_spec(), replace(context, posting=None, **extra))
+        plain = compute_due(notice_spec(), replace(context, **{**extra, "posting": None}))
         assert receipt.due_date == plain.due_date, receipt.steps
         assert POSTED_ON_LETTER not in receipt.rule_ids and receipt.safe_date == plain.safe_date
         named = [w for w in receipt.warnings if w.startswith(f"{D(posted):%a} {D(posted).day} Oct 2026 ")]

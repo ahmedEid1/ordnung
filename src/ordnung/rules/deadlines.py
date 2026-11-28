@@ -259,8 +259,25 @@ _STATUTE_PERIODS = {rule_id: periods for _, rule_id, periods in _STATUTES}
 #: never from a delivery fiction (:func:`from_arrival`).
 _PRIVATE_LAW_STATUTES = ("kschg_4",)
 #: Letter kinds that are declarations under private law, whoever sends them: they take effect on arrival (§ 130
-#: Abs. 1 BGB), so a posting day the page states never starts their periods.
-_PRIVATE_LAW_KINDS = ("dismissal", "landlord_notice", "rent_increase", "operating_costs")
+#: Abs. 1 BGB), so a posting day the page states never starts their periods — a dismissal, a landlord's notice, a
+#: rent increase, an operating-cost statement, and the contract-law letters: a contract, its change, a price
+#: increase, a cancellation's confirmation, an insurer's, an employer's, a lease's or a bank's letter (a university
+#: as employer or a city's housing company writes under private law there too). Not an invoice, a reminder or a
+#: utility bill: a town's fee for water or waste may be an administrative act (a Gebührenbescheid, § 41 VwVfG).
+_PRIVATE_LAW_KINDS = (
+    "dismissal",
+    "landlord_notice",
+    "rent_increase",
+    "operating_costs",
+    "contract",
+    "contract_change",
+    "price_increase",
+    "cancellation_confirmation",
+    "insurance",
+    "employment",
+    "rent_lease",
+    "bank_letter",
+)
 #: The court rules only bind the dates they are about: the objection or court action (and, for a
 #: Mahnbescheid, paying instead). A hearing or a severance payment whose wording mentions the court
 #: action doesn't follow them.
@@ -312,13 +329,16 @@ class PostingStatement:
     differ), ``None`` when they state none; ``quote`` the sentence or field it was read from; ``grounding`` how the
     page it stands on was read (a text layer: ``verified``; an AI transcript of a photo: ``model_read``).
     ``other``: a second, later posting day the pages also state for this letter, with its ``other_quote`` — the
-    letter contradicts itself."""
+    letter contradicts itself. ``formal``: the pages say the letter is served under the VwZG with a proof of its
+    receipt ("Einschreiben mit Rückschein", "gegen Empfangsbekenntnis", § 5 VwZG): its period runs from that
+    receipt (§ 4 Abs. 2 S. 1, § 5 Abs. 4 VwZG), so no posting day starts it."""
 
     day: date | None = None
     quote: str = ""
     grounding: Literal["verified", "model_read"] = "verified"
     other: date | None = None
     other_quote: str = ""
+    formal: bool = False
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -1697,9 +1717,12 @@ def _compute_relative(
     # filed as one never starts from a posting day. Nor does a declaration under private law — a dismissal, a
     # landlord's notice, a rent increase, an operating-cost statement —, from a public employer or a city's housing
     # company as from anyone: it counts from its arrival (§ 130 Abs. 1 BGB), never from a delivery fiction, so a
-    # posting day must not move it later even where the reading kept deemed delivery
+    # posting day must not move it later even where the reading kept deemed delivery. Nor a letter whose page says it
+    # is served with a proof of receipt (a Rückschein, an Empfangsbekenntnis): it counts from that receipt (§ 4 Abs. 2
+    # S. 1, § 5 Abs. 4 VwZG) — a plain Einschreiben from its posting (§ 4 Abs. 2 S. 2 VwZG), as ordinary post
     posting = (
         not formal
+        and not (ctx.posting is not None and ctx.posting.formal)
         and ctx.letter_kind not in ("fine", *_PRIVATE_LAW_KINDS)
         and ctx.delivery_scope is not None
         and spec.anchor == "deemed_delivery"

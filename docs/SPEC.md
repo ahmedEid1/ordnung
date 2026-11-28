@@ -657,34 +657,34 @@ warning and "Please check" (its evidence the page's line with the other date).
 
 **The posting day the letter states** (`ingest/posting.py`, code only; [ADR 0026](decisions/0026-a-posting-day-the-letter-states-is-the-start.md)).
 When the rules context is built (the app's `rule_context`, the benchmark's Ordnung condition: the same
-function), code reads on the letter's pages the day *this* letter was handed to the post: a field — a posting
-label right before one date ("Tag der Aufgabe zur Post: …", "Datum der Aufgabe zur Post", "Aufgegeben zur Post
-am", "Absendedatum", "Absendetag", "Absendevermerk", "Tag der Absendung", "Datum des Versands", "Datum des
-Postausgangs", "Versanddatum", "Date of posting"; plainer words such as "Versandt am", "Versand am", "Aufgegeben
-am", "Abgesandt am", "Abgesendet am", "Absendung am", "Posted" only where a cell starts), or a label above its date
-as a letterhead's information block prints it — the date right under the label on the page by the words' boxes (as
-the header's "Datum" is read), the last thing on its row and alone in the label's column there but for a weekday,
-or, without boxes, a label alone on its line over a date alone on its line (a weekday allowed); never another
-column's date, another field's date stacked under the label, two dates in the cell or a table's row; never a
-supposition or an example ("Wenn dieser Bescheid am … zur Post gegeben wurde …")
-— or a sentence in the statutes' words ("am … zur Post gegeben / aufgegeben", "der Post übergeben", "Aufgabe zur
-Post am / erfolgte am …"; with no subject or about this letter, never a document named by its own noun or sent to
-someone else) or that this letter was sent on a day ("versandt",
-"abgesandt", "posted" … only with "dieser Bescheid", "dieses Schreiben", "this letter" or the decision of the
-letter's own date). Never another decision's or the sender's earlier letter ("Bescheid vom <another date>",
-"unser Schreiben", a line that dates another letter), the person's letter or act ("Ihr Widerspruch", "Sie haben
-…"), an enclosure or a copy, a card, an ID or documents sent, a date after "bis", "spätestens", "by", "until", a
-payment's due day, the day a letter counts as delivered ("vierten Tag nach Aufgabe zur Post"), a future, planned
-("voraussichtlich", "geplant"), requested or negated posting, an e-mail or a portal, goods sent (a shop's
-"versandt am"), a date that reads two ways or has no year — in a field as in a sentence; what makes a sentence's posting another's is read in its own lines (a
-header's "Ihr Zeichen" says nothing about it). Several statements that agree give one day, its first sentence or
+function), code reads on the letter's pages the day *this* letter was handed to the post, in closed forms only
+(each a test; a word a form does not list refuses it — unknown means no; every other wording keeps the letter's
+date): a field — a posting label ("Tag der Aufgabe zur Post", "Aufgabe zur Post", "Zur Post gegeben",
+"Absendedatum", "Absendetag", "Versanddatum", "Datum des Versands", "Versandt am", "Date of posting" …) that starts
+its line, or, by the page's word boxes, its cell in the first page's information block (right of the address
+window, above the salutation), then only a colon, "am" or "ist der", a weekday and the date, nothing after it and
+no document named on the line above; or a label ending its line over its date, the date right under it on the page
+by the words' boxes (as the header's "Datum" is read), the last thing on its row and alone in the label's column
+there but for a weekday, or, without boxes, a label alone on its line over a date alone on its line (a weekday
+allowed) — or a whole clause that records this letter's posting: "Dieser / Der Bescheid", "Dieses / Das
+Schreiben", "Dieser / Der Brief" or "Dieser <listed compound>" + "wurde am <date> zur Post gegeben / der Post
+übergeben / versandt" (or "ist am … worden"), "Die Aufgabe zur Post erfolgte am <date>", "Zur Post gegeben am
+<date>", "This letter / notice / decision was posted on <date>", after nothing but a sentence's end, the
+salutation, a line ending in a date or a listed heading ("Hinweis:"). So never a supposition (a clause opening with
+its verb, "Wenn", "Bei", "Im Fall", "Beispiel:"), another decision, document or person ("der ursprüngliche
+Bescheid", "Das Merkblatt", "Der Einspruch"), a second posting, a bound ("spätestens", "bis zum"), a plan or the
+future ("erfolgt am", "wird … zur Post gegeben"), an e-mail, a label after other words in its line, or a date that
+reads two ways or has no year. The pages also say whether the letter is served with a proof of receipt
+("Einschreiben mit Rückschein", "gegen Empfangsbekenntnis", "§ 5 VwZG": `PostingStatement.formal`). Several statements that agree give one day, its first sentence or
 field as the quote, `verified` when a text page says it and `model_read` when only a photo's transcript does;
 two that differ give the earlier and the later (`RuleContext.posting`). At **compute** the engine starts an
 authority's deemed delivery by post from that day when it is after the letter's date, not after today and at
 most 7 days on: the receipt names it with its words (`posting_day_stated`), says what the letter's date would
 have given and gives that date as the `safe_date`; a photo's posting day keeps the date at most `medium`; two
-different days count from the earlier, `low` and "Please check" (`conflicting_dates`); never a fine's or a
-period counted back. With the pages read and none stated, a later posting day only the reading names — as the
+different days count from the earlier, `low` and "Please check" (`conflicting_dates`); never a fine's, a
+declaration's under private law (a dismissal, a contract's, an insurer's, an employer's, a lease's or a bank's
+letter: from arrival), a letter's served with a proof of receipt (from that receipt, § 4 Abs. 2 S. 1, § 5 VwZG; a
+plain Einschreiben counts from its posting, § 4 Abs. 2 S. 2 VwZG) or a period counted back. With the pages read and none stated, a later posting day only the reading names — as the
 period's start (`anchor_date`) or among its key facts (`RuleContext.posting_read`) — keeps the letter's date, and
 the receipt names the later deadline one level less sure (none for a day after the day it is read: it can't be
 the posting day); without pages (the rules tools) a later posting day stays a note.
