@@ -12,11 +12,16 @@ benchmark's Ordnung condition (``evals.conditions.ordnung_rule_context``) both c
 What counts — a date the letter gives as the day *this* letter was posted:
 
 * a field: a cell of its own that is a posting label and a date ("Tag der Aufgabe zur Post: 19.10.2026",
-  "Datum der Aufgabe zur Post", "Aufgabe zur Post am …", "Zur Post gegeben am …", "Absendedatum", "Absendetag",
-  "Tag der Absendung", "Abgesandt am", "Versanddatum", "Versandt am", "Postausgang", "Date of posting:",
-  "Posting date:", "Posted on:"), or such a label alone on its line with the date alone on the next;
+  "Datum der Aufgabe zur Post", "Aufgabe zur Post am …", "Zur Post gegeben am …", "Aufgegeben zur Post am …",
+  "Absendedatum", "Absendetag", "Tag der Absendung", "Absendung am", "Abgesandt am", "Abgesendet am",
+  "Versanddatum", "Versandt am", "Postausgang", "Datum des Postausgangs", "Date of posting:", "Posting date:",
+  "Posted on:"), or such a label above its date, as a letterhead's information block prints a column's label over
+  its value: on the page right under the label (by the words' boxes), or, without boxes, the label and the date
+  each alone on their line — never another column's date, nor a table's row;
 * a sentence in the statutes' own words: "Aufgabe zur Post am …", "… am 19.10.2026 zur Post gegeben /
-  aufgegeben", "der Post übergeben", "zur Post gegeben am …";
+  aufgegeben", "der Post übergeben", "zur Post gegeben am …" — with no subject, or about this letter ("Dieser
+  Bescheid", plainly "Der Bescheid", "Das Schreiben"), never about a document named by its own noun or sent to
+  someone else ("Die Zahlungsaufforderung …", "Eine Mitteilung an den Arbeitgeber …");
 * a sentence that this letter was sent on a day, in plainer words ("versandt", "abgesandt", "abgeschickt",
   "verschickt", "posted", "mailed", "sent"): only when it names this letter ("dieser Bescheid", "dieses
   Schreiben", "this letter", or the decision of the letter's own date: "Der Bescheid vom <its date> wurde am …
@@ -24,16 +29,21 @@ What counts — a date the letter gives as the day *this* letter was posted:
 
 What never counts (each a test):
 
-* another letter's or an earlier decision's posting day: a sentence naming a letter by another date ("Der
-  Bescheid vom 01.09.2026 wurde am 03.09.2026 zur Post gegeben"), or "Ihr Schreiben", "unser Schreiben vom …";
+* another letter's or an earlier decision's posting day: a sentence or a field's line naming a letter by another
+  date ("Der Bescheid vom 01.09.2026 wurde am 03.09.2026 zur Post gegeben", "Bescheid für 2024 | Datum
+  12.10.2026 | Aufgabe zur Post …"), another document posted ("Die Kontrollmitteilung an das Finanzamt …"), or
+  "Ihr Schreiben", "unser Schreiben vom …";
 * the person's own letter or act ("Ihr Widerspruch …", "Sie haben … zur Post gegeben", "your letter");
-* an enclosure or a copy ("Die Anlage wurde gesondert versandt", "Abschrift", "Kopie");
+* an enclosure or a copy ("Die Anlage wurde gesondert versandt", "Anlage 1   Versanddatum …", "Abschrift");
+* a card, an ID or documents sent ("Ihre neue Gesundheitskarte - Versanddatum: …");
+* sent another way than by post ("Versandt am: … per E-Mail");
 * a payment or a deadline: a date after "bis", "spätestens", "innerhalb", "by", "until", or a sentence about
   paying;
 * the day a letter counts as delivered ("gilt am vierten Tag nach Aufgabe zur Post als bekannt gegeben", "Tag
   nach der Aufgabe zur Post"), or a date after "vom" ("Schreiben vom …");
-* a posting day in the future tense, as a request or negated ("wird am … zur Post gegeben", "bitte geben Sie …
-  zur Post", "nicht vor dem …");
+* a posting day in the future tense, planned, as a request or negated ("wird am … zur Post gegeben",
+  "Versanddatum (voraussichtlich)", "Geplante Aufgabe zur Post", "bitte geben Sie … zur Post", "nicht vor dem …"),
+  in a sentence or a field;
 * goods sent ("Ihre Bestellung wurde am … versandt", "Paket", "Sendungsnummer") — a shop's invoice is no
   authority's decision anyway: the engine lets a posting day start only an authority's deemed delivery by post
   (:func:`~ordnung.rules.deadlines._compute_relative`), never a company's period from arrival;
@@ -53,7 +63,17 @@ from dataclasses import dataclass
 from datetime import date
 from typing import Literal
 
-from ordnung.ingest.conflicts import _PAYMENT_CUE, _clauses, _one_date, _page_text
+from ordnung.ingest.conflicts import (
+    _ANOTHER_DATE,
+    _PAYMENT_CUE,
+    _TABLE_ROW,
+    _UNDER_REACH,
+    Box,
+    _clauses,
+    _one_date,
+    _page_text,
+    _page_words,
+)
 from ordnung.ingest.normalize import fold_punctuation
 from ordnung.ingest.verify import PageInput, date_spans
 from ordnung.models import Grounding
@@ -74,17 +94,26 @@ _DAY = (
 #: a sentence about something sent is read as a sentence.
 _STRONG_LABEL = (
     r"(?:(?:tag|datum)\s+(?:der\s+(?:aufgabe\s+zur\s+post|postaufgabe|absendung|versendung)|des\s+versand(?:e)?s)"
-    r"|aufgabe\s+zur\s+post|zur\s+post\s+(?:auf)?gegeben|postaufgabe|absende(?:datum|tag)|versand(?:datum|tag)"
+    r"|datum\s+des\s+postausgang(?:e)?s|aufgabe\s+zur\s+post|aufgegeben\s+zur\s+post|zur\s+post\s+(?:auf)?gegeben"
+    r"|postaufgabe|absende(?:datum|tag)|versand(?:datum|tag)"
     r"|date\s+of\s+(?:posting|dispatch)|posting\s+date)"
 )
-_WEAK_LABEL = r"(?:abgesandt|abgeschickt|versandt|versendet|postausgang|date\s+posted|posted|mailed)"
+_WEAK_LABEL = r"(?:abgesandt|abgesendet|abgeschickt|absendung|versandt|versendet|postausgang|date\s+posted|posted|mailed)"
 #: What may stand between a label and its date: "am", a short note in brackets ("Aufgabe zur Post (Absendetag):"),
 #: a colon, "ist der" ("Tag der Aufgabe zur Post ist der 19.10.2026").
 _LABEL_END = rf"(?:\s*\([^()\n]{{1,30}}\))?(?:\s+(?:am|on|ist\s+(?:der|am)|is))?\s*:?\s*{_DAY}(?:den\s+)?$"
 _FIELD_BEFORE = re.compile(
     rf"(?:(?<!\w){_STRONG_LABEL}|(?:^|\s{{2,}}|\t|[|·])\s*{_WEAK_LABEL}){_LABEL_END}", re.IGNORECASE
 )
-_FIELD_ALONE = re.compile(rf"^\s*(?:{_STRONG_LABEL}|{_WEAK_LABEL})(?:\s+(?:am|on))?\s*:?\s*$", re.IGNORECASE)
+#: A label ending its line, its value on the next: "Tag der Aufgabe zur Post" over "19.10.2026", as a letterhead's
+#: information block prints a column's label above its value (read as :func:`ordnung.ingest.conflicts._header_date`
+#: reads "Datum").
+_FIELD_LINE_END = re.compile(
+    rf"(?:(?<!\w){_STRONG_LABEL}|(?:^|\s{{2,}}|\t|[|·])\s*{_WEAK_LABEL})(?:\s+(?:am|on))?\s*:?\s*$",
+    re.IGNORECASE,
+)
+#: A posting label alone in a cell of a row of labels: "Tag der Aufgabe zur Post   Bekanntgabetag".
+_FIELD_CELL = re.compile(rf"(?:{_STRONG_LABEL}|{_WEAK_LABEL})(?:\s+(?:am|on))?\s*:?", re.IGNORECASE)
 #: Words right before a field's label that make it another's: the day a letter counts as delivered ("am vierten
 #: Tag nach Aufgabe zur Post"), the person's or the sender's earlier letter ("Ihr Schreiben, abgesandt am").
 _LABEL_NOT_THIS = re.compile(
@@ -95,7 +124,8 @@ _LABEL_NOT_THIS = re.compile(
 #: "zur Post gegeben am …", "der Post übergeben am …".
 _STATUTE_BEFORE = re.compile(
     r"(?:aufgabe\s+zur\s+post(?:\s+(?:am|ist\s+(?:der|am)|erfolgte?\s+am))?\s*:?"
-    r"|zur\s+post\s+(?:auf)?gegeben(?:\s+worden)?\s+am|der\s+post\s+übergeben(?:\s+worden)?\s+am)"
+    r"|zur\s+post\s+(?:auf)?gegeben(?:\s+worden)?\s+am|aufgegeben\s+zur\s+post\s+am"
+    r"|der\s+post\s+übergeben(?:\s+worden)?\s+am)"
     rf"\s*{_DAY}(?:den\s+)?$",
     re.IGNORECASE,
 )
@@ -151,6 +181,49 @@ _DEADLINE_BEFORE = re.compile(
     rf"(?:\s+(?:zum|am|spätestens))*\s*{_DAY}(?:den\s+)?$",
     re.IGNORECASE,
 )
+#: A posting day that is a plan, not a record: "Versanddatum (voraussichtlich)", "Geplante Aufgabe zur Post",
+#: "Nächste Aufgabe zur Post", "Der Bescheid folgt".
+_PLANNED = re.compile(
+    r"\b(?:voraussichtlich\w*|geplant\w*|vorgesehen\w*|nächste\w*|künftig\w*|frühestens|folgt|folgen|demnächst"
+    r"|expected|planned|scheduled|next)\b",
+    re.IGNORECASE,
+)
+#: Things an authority sends besides a letter, whose own dispatch a field may date: a health insurance card, an ID,
+#: documents, a certificate ("Ihre neue Gesundheitskarte - Versanddatum: …").
+_OBJECT = re.compile(
+    r"\w*(?:karte|ausweis|dokument|unterlage|bescheinigung|urkunde|plakette)\w*|\b(?:cards?|documents?|certificates?)\b",
+    re.IGNORECASE,
+)
+#: Another way of sending than the post: an e-mail, a portal (its own day under § 122 Abs. 2a AO, never this one).
+_ELECTRONIC = re.compile(
+    r"\be-?mail\w*|\bde-mail\b|\belektronisch\w*|\bportal\w*|\bonline\b|\belster\b|\belectronic\w*",
+    re.IGNORECASE,
+)
+#: A letter's date label right before a date ("Datum 12.10.2026", "vom 12.10.2026", "dated"): on a posting day's line,
+#: a date other than the letter's own makes the line another letter's ("Bescheid für 2024 | Datum 12.10.2026 |
+#: Aufgabe zur Post 19.10.2026" is a row about another decision).
+_DATED = re.compile(r"(?:\bvom|\bdatum|\bdate|\bdated)\s*:?\s*$", re.IGNORECASE)
+#: Where a field's cell ends: a column's gap, a tab, "|" or "·".
+_CELL_BREAK = re.compile(r"\s{2,}|\t|[|·]")
+#: A line that ends unfinished, so that a sentence goes on on the next: a hyphen, a preposition, an article, an
+#: auxiliary ("Dieser Bescheid wurde am" over "19.10.2026 zur Post gegeben"). A line ending in a label ("Tag der
+#: Aufgabe zur Post") is finished: the date on the next line may be another column's.
+_UNFINISHED = re.compile(
+    r"(?:-|\b(?:am|an|den|der|des|dem|die|das|zur|zum|ist|sind|wurde|wurden|worden|erfolgte|erfolgt|on|the|of|was"
+    r"|were|is))\s*$",
+    re.IGNORECASE,
+)
+#: A document's noun in a sentence's subject: another document than this letter, unless it is how a letter calls
+#: itself (:data:`_OWN_NOUNS`) or the sentence names this letter.
+_DOCUMENT = re.compile(
+    r"\b\w*(?:bescheid|schreiben|brief|mitteilung|aufforderung|erinnerung|mahnung|entscheidung|festsetzung"
+    r"|verfügung|benachrichtigung|erklärung|antrag|formular|rechnung|karte|ausweis|dokument|unterlage"
+    r"|bescheinigung|urkunde)\w*",
+    re.IGNORECASE,
+)
+_OWN_NOUNS = frozenset({"bescheid", "schreiben", "brief"})
+#: Someone a document was sent to: "an das Finanzamt Beispielhausen", "an den Arbeitgeber".
+_ADDRESSEE = re.compile(r"\ban\s+(?:das|den|die|dem|einen?|eine[mr]?)\b", re.IGNORECASE)
 #: Goods sent: a shop's dispatch, never a letter's posting.
 _GOODS = re.compile(
     r"\b(?:bestellung\w*|ware\w*|artikel|lieferung\w*|paket\w*|päckchen|sendungsnummer|sendungsverfolgung"
@@ -170,30 +243,139 @@ def _short(text: str) -> str:
     return re.sub(r"\s+", " ", text).strip()
 
 
-def _fields(text: str, grounding: Grounding) -> list[_Found]:
+def _cell(line: str, start: int, end: int) -> str:
+    """The cell of ``line`` that holds ``line[start:end]``: from the column's gap, tab, "|" or "·" before it to the
+    one after it."""
+    breaks = [(m.start(), m.end()) for m in _CELL_BREAK.finditer(line)]
+    lo = max((e for s, e in breaks if e <= start), default=0)
+    hi = min((s for s, e in breaks if s >= end), default=len(line))
+    return line[lo:hi]
+
+
+def _dates_another(line: str, own: tuple[int, int], letter_date: date | None) -> bool:
+    """Whether ``line`` dates another letter than this one, beside the posting day at ``own``: a letter named by
+    another date ("Bescheid vom 12.10.2026"), or a letter's date label with another date than the letter's own
+    ("Datum 12.10.2026") — a table's row about another decision."""
+    if _names_another(line, letter_date):
+        return True
+    for start, end, mention in date_spans(line):
+        if (start, end) == own or not _DATED.search(line[:start][-20:]):
+            continue
+        if letter_date is None or mention.as_date() != letter_date:
+            return True
+    return False
+
+
+def _another_s(lines: Sequence[str], previous: str, own: str) -> bool:
+    """Whether a field's ``lines`` (its label's and its value's) or the line ``previous`` to them make its posting
+    day something else's: a plan ("voraussichtlich", "geplant", "Nächste Aufgabe zur Post"), a future, a request
+    or a negation, an enclosure or a copy ("Anlage", "Beiliegend"), a card, an ID or documents sent, goods. The
+    field's own cell ``own`` must not name another way of sending (an e-mail, a portal)."""
+    text = "\n".join(lines)
+    return bool(
+        _NOT_DONE.search(text)
+        or _ELECTRONIC.search(own)
+        or any(
+            pattern.search(text) or pattern.search(previous)
+            for pattern in (_PLANNED, _OBJECT, _ENCLOSURE, _GOODS)
+        )
+    )
+
+
+def _label_box(words: list[Box], label: str) -> Box | None:
+    """Where the words of ``label`` ("Tag der Aufgabe zur Post") stand on the page, as one box — the first run of
+    the page's words that spells it."""
+    tokens = [t for t in (_token(word) for word in label.split()) if t]
+    texts = [_token(box[0]) for box in words]
+    for index in range(len(words) - len(tokens) + 1):
+        if tokens and texts[index : index + len(tokens)] == tokens:
+            run = words[index : index + len(tokens)]
+            x0, y0 = min(b[1] for b in run), min(b[2] for b in run)
+            return label, x0, y0, max(b[3] for b in run), max(b[4] for b in run)
+    return None
+
+
+def _token(word: str) -> str:
+    return fold_punctuation(word).strip(":.,;()|·").casefold()
+
+
+def _under_label(words: list[Box], label: str, value: str) -> bool:
+    """Whether the date ``value`` stands on the page right under the posting label ``label`` — its column's value,
+    not another column's (as :func:`ordnung.ingest.conflicts._under` for "Datum")."""
+    box = _label_box(words, label)
+    token = value.split()[0].strip(".,;")
+    values = [found for found in words if fold_punctuation(found[0]).strip(".,;") == token]
+    return box is not None and any(
+        box[2] < found[2] < box[4] + _UNDER_REACH and min(box[3], found[3]) > max(box[1], found[1])
+        for found in values
+    )
+
+
+def _fields(text: str, words: list[Box], grounding: Grounding, letter_date: date | None) -> list[_Found]:
     """Posting days in a field: a posting label right before one date that reads one way ("Tag der Aufgabe zur
-    Post: 19.10.2026", "Versandt am: 19.10.2026" where a cell starts), or the label alone on its line and the date
-    alone on the next. Never on a line about goods sent, nor after "nach" or another's letter."""
+    Post: 19.10.2026", "Versandt am: 19.10.2026" where a cell starts), or a label ending its line with its value on
+    the next — on the page right under the label (by the words' boxes), or, without boxes, the label and the date
+    each alone on their line; never a table's row. Never after "nach" or another's letter, nor on a line that dates
+    another letter, plans the posting or is about an enclosure, a card, documents or goods (:func:`_another_s`)."""
     found: list[_Found] = []
     lines = fold_punctuation(text).splitlines()
     for index, line in enumerate(lines):
-        if _GOODS.search(line):
-            continue
+        previous = lines[index - 1] if index else ""
         spans = [(start, end) for start, end, _ in date_spans(line)]
         for start, end in dict.fromkeys(spans):
             label = _FIELD_BEFORE.search(line[:start])
             day = _one_date(line, start, end)
-            if label is None or day is None or _LABEL_NOT_THIS.search(line[: label.start()][-30:]):
+            if (
+                label is None
+                or day is None
+                or _LABEL_NOT_THIS.search(line[: label.start()][-30:])
+                or _another_s([line], previous, _cell(line, label.start(), end))
+                or _dates_another(line, (start, end), letter_date)
+            ):
                 continue
             found.append(_Found(day, _short(line[label.start() : end]).lstrip("|· "), grounding))
-        if _FIELD_ALONE.match(line) and index + 1 < len(lines):
-            following = lines[index + 1].strip()
-            dated = {(start, end) for start, end, _ in date_spans(following)}
-            if len(dated) == 1:
-                [(start, end)] = dated
-                day = _one_date(following, start, end)
-                if day is not None and (start, end) == (0, len(following)):
-                    found.append(_Found(day, _short(f"{line} {following}"), grounding))
+        if index + 1 < len(lines) and not _TABLE_ROW.search(line):
+            found += _under_labels(line, lines[index + 1].rstrip(), previous, words, grounding, letter_date)
+    return found
+
+
+def _labels_above(line: str, words: list[Box]) -> list[str]:
+    """The posting labels in ``line`` whose value may stand on the next line: one ending the line ("…   Tag der
+    Aufgabe zur Post"), and, where the page's word boxes can tell the columns apart, one alone in its cell
+    ("Tag der Aufgabe zur Post   Bekanntgabetag")."""
+    names = []
+    label = _FIELD_LINE_END.search(line)
+    if label is not None and not _LABEL_NOT_THIS.search(line[: label.start()][-30:]):
+        names.append(line[label.start() :].strip().lstrip("|·").strip())
+    if words:
+        cells = (cell.strip() for cell in _CELL_BREAK.split(line))
+        names += [cell for cell in cells if _FIELD_CELL.fullmatch(cell) and cell not in names]
+    return names
+
+
+def _under_labels(
+    line: str, following: str, previous: str, words: list[Box], grounding: Grounding, letter_date: date | None
+) -> list[_Found]:
+    """Posting days on the line ``following`` a line of labels: a date under its posting label on the page (by
+    the words' boxes), or, without boxes, a label and a date each alone on their line."""
+    found = []
+    for name in _labels_above(line, words):
+        for start, end, _ in date_spans(following):
+            day = _one_date(following, start, end)
+            value = following[start:end]
+            if day is None or _ANOTHER_DATE.search(following[:start]):
+                continue
+            if words:
+                if not _under_label(words, name, value):
+                    continue  # under another column
+            elif line.strip() != name or following.strip() != value:
+                continue  # without the page's word boxes: only a label and a date each alone on its line
+            cell = _cell(following, start, end)
+            if _another_s([line, following], previous, f"{name} {cell}") or _dates_another(
+                following, (start, end), letter_date
+            ):
+                continue
+            found.append(_Found(day, _short(f"{name} {value}"), grounding))
     return found
 
 
@@ -218,6 +400,19 @@ def _names_another(clause: str, letter_date: date | None) -> bool:
         if _NAMED_BY_DATE.search(clause[:start]) and (letter_date is None or day != letter_date):
             return True
     return False
+
+
+def _about_another(subject: str, letter_date: date | None) -> bool:
+    """Whether the words before a posting in the statutes' words make it another document's: a document named by
+    its own noun ("Die Zahlungsaufforderung", "Der Widerspruchsbescheid", "Die Bescheide für 2023 und 2024") or one
+    sent to someone ("Eine Mitteilung an den Arbeitgeber"), unless the sentence names this letter ("Dieser
+    Widerspruchsbescheid"). A letter calls itself plainly "der Bescheid", "das Schreiben", "der Brief"; a sentence
+    with no subject ("Aufgabe zur Post am …") is the letter's own record."""
+    nouns = [found.group().casefold() for found in _DOCUMENT.finditer(subject)]
+    sent_to = _ADDRESSEE.search(subject)
+    if not sent_to and all(noun in _OWN_NOUNS for noun in nouns):
+        return False
+    return not _names_this_letter(subject, letter_date)
 
 
 def _sentences(text: str, grounding: Grounding, letter_date: date | None) -> list[_Found]:
@@ -245,6 +440,17 @@ def _sentences(text: str, grounding: Grounding, letter_date: date | None) -> lis
                 continue
             ahead = cue.re in (_STATUTE_BEFORE, _SENT_BEFORE)
             first = start - len(before) + cue.start() if ahead else start
+            # the words before the date are its label's only on one line, or where a sentence goes on: a label ending
+            # its line ("Tag der Aufgabe zur Post" over "23.10.2026   19.10.2026") is a field's, whose value may be
+            # another column's (:func:`_fields` reads it by the page's boxes)
+            said = (
+                start - len(before) + (cue.start() if ahead else (_ON_BEFORE.search(before) or cue).start())
+            )
+            if any(
+                not _UNFINISHED.search(clause[max(0, at - 30) : at])
+                for at in (i for i in range(said, start) if clause[i] == "\n")
+            ):
+                continue
             last = end if ahead else end + cue.end()
             line_start = clause.rfind("\n", 0, first) + 1
             line_end = clause.find("\n", last)
@@ -253,11 +459,14 @@ def _sentences(text: str, grounding: Grounding, letter_date: date | None) -> lis
             if (
                 _NOT_THIS.search(own)
                 or _NOT_DONE.search(own)
+                or _PLANNED.search(own)
                 or _ENCLOSURE.search(own)
                 or _PAYMENT_CUE.search(own)
-                or _names_another(own, letter_date)
+                or _dates_another(own, (start - line_start, end - line_start), letter_date)
                 or _DELIVERED_BEFORE.search(clause[max(0, first - 30) : first])
             ):
+                continue
+            if statute and _about_another(clause[max(0, line_start - 120) : first], letter_date):
                 continue
             if not statute and (
                 _GOODS.search(own)
@@ -279,7 +488,7 @@ def posting_statement(pages: Sequence[PageInput], letter_date: date | None = Non
     found: list[_Found] = []
     for page in pages:
         text, grounding = _page_text(page)
-        found += _fields(text, grounding)
+        found += _fields(text, _page_words(page), grounding, letter_date)
         found += _sentences(text, grounding, letter_date)
     if not found:
         return PostingStatement()

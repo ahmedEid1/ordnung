@@ -11,6 +11,7 @@ from __future__ import annotations
 from collections.abc import Iterator
 from datetime import date
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -94,6 +95,24 @@ CUES = [
     ("with-its-delivery-day", "Tag der Aufgabe zur Post: 19.10.2026 (Bekanntgabe: 23.10.2026)", "2026-10-19"),
     ("english-field", "Date of posting: 19 October 2026", "2026-10-19"),
     ("english-sentence", "This letter was posted on 19 October 2026.", "2026-10-19"),
+    ("field-aufgegeben-zur-post", "Aufgegeben zur Post am 19.10.2026", "2026-10-19"),
+    ("field-datum-des-postausgangs", "Datum des Postausgangs: 19.10.2026", "2026-10-19"),
+    ("field-abgesendet-am", "Abgesendet am 19.10.2026", "2026-10-19"),
+    ("field-absendung-am", "Absendung am 19.10.2026", "2026-10-19"),
+    ("sentence-aufgegeben-zur-post", "Er wurde aufgegeben zur Post am 19.10.2026.", "2026-10-19"),
+    # a sentence that goes on on the next line after "am": the date is still its own
+    (
+        "sentence-wrapped-before-the-date",
+        "Dieser Bescheid wurde am\n19.10.2026 zur Post gegeben.",
+        "2026-10-19",
+    ),
+    # a letter calls itself plainly "der Bescheid"
+    ("sentence-the-decision", "Der Bescheid wurde am 19.10.2026 zur Post gegeben.", "2026-10-19"),
+    (
+        "sentence-this-other-kind",
+        "Dieser Widerspruchsbescheid wurde am 19.10.2026 zur Post gegeben.",
+        "2026-10-19",
+    ),
 ]
 
 
@@ -141,6 +160,42 @@ NEVER = [
         "the-letter-s-own-date-only",
         f"{HEADER}\nSehr geehrte Frau Beispiel,\nhiermit setzen wir die Steuer fest.",
     ),
+    # a planned posting is no record of this letter's
+    ("planned-in-brackets", "Versanddatum (voraussichtlich): 19.10.2026"),
+    ("planned-geplant", "Versandtag (geplant): 19.10.2026"),
+    ("planned-voraussichtlicher", "Voraussichtlicher Versandtag: 19.10.2026"),
+    ("planned-geplante", "Geplante Aufgabe zur Post: 19.10.2026"),
+    ("planned-naechste", "Nächste Aufgabe zur Post: 19.10.2026"),
+    (
+        "planned-another-decision-follows",
+        "Der Rentenbescheid folgt mit gesonderter Post.\nVoraussichtliches Versanddatum: 19.10.2026",
+    ),
+    # another object's dispatch, or another letter's posting, in a field
+    ("a-card-s-dispatch", "Ihre neue Gesundheitskarte – Versanddatum: 19.10.2026"),
+    ("an-id-s-dispatch", "Ersatzausweis\nVersanddatum: 19.10.2026"),
+    ("an-enclosure-s-field", "Anlage 1 (Berechnung)  Versanddatum 19.10.2026"),
+    ("an-enclosure-s-field-in-a-list", "Anlage: Kontoauszug, Versanddatum 19.10.2026"),
+    ("an-enclosure-s-label", "Beiliegend: Tag der Aufgabe zur Post: 19.10.2026"),
+    ("an-enclosure-s-column", "Anlage zum Bescheid   Versanddatum: 19.10.2026"),
+    ("another-decision-s-field", "Bescheid vom 12.10.2026 · Tag der Aufgabe zur Post: 19.10.2026"),
+    ("another-decision-s-row", "Bescheid für 2024 | Datum 12.10.2026 | Aufgabe zur Post 19.10.2026"),
+    ("sent-by-e-mail", "Versandt am: 19.10.2026 per E-Mail"),
+    # another document posted, in the statutes' words: named by its own noun, or sent to someone else
+    (
+        "a-notice-to-another-office",
+        "Die Kontrollmitteilung an das Finanzamt Beispielhausen wurde am 19.10.2026 zur Post gegeben.",
+    ),
+    ("a-notice-to-the-employer", "Eine Mitteilung an den Arbeitgeber wurde am 19.10.2026 zur Post gegeben."),
+    ("a-demand-for-payment", "Die Zahlungsaufforderung wurde am 19.10.2026 zur Post gegeben."),
+    ("other-decisions", "Die Bescheide für 2023 und 2024 wurden am 19.10.2026 zur Post gegeben."),
+    ("another-kind-of-decision", "Der Widerspruchsbescheid wurde am 19.10.2026 zur Post gegeben."),
+    # a label ending its line: the next line's first date may stand under another label
+    (
+        "another-column-s-date-under-the-label-s-line",
+        "Finanzamt Musterstadt\nBekanntgabetag              Tag der Aufgabe zur Post\n"
+        "23.10.2026                  19.10.2026\n",
+    ),
+    ("an-appointment-s-column", "Termin   Aufgabe zur Post\n22.10.2026   19.10.2026"),
 ]
 
 
@@ -149,6 +204,96 @@ def test_what_never_counts_as_this_letter_s_posting_day() -> None:
         assert found(text) == PostingStatement()
 
     check_rows(NEVER, check)
+
+
+def _box(text: str, x0: float, y0: float) -> list[Any]:
+    """A word's box on a page (text, x0, y0, x1, y1), one character ≈ 0.01 of the page wide."""
+    return [text, x0, y0, x0 + 0.01 * len(text), y0 + 0.012]
+
+
+def _row(y: float, *cells: tuple[float, str]) -> list[list[Any]]:
+    """The boxes of a row of cells: each (x, words), its words one after the other."""
+    boxes = []
+    for x, words in cells:
+        for word in words.split():
+            boxes.append(_box(word, x, y))
+            x += 0.01 * len(word) + 0.005
+    return boxes
+
+
+#: A letterhead's information block: labels in one row, their values in the next (made up). (id, page text, the
+#: page's word boxes, the posting day it states — or None).
+TWO_ROWS = [
+    (
+        "posting-column-on-the-right",
+        "Bekanntgabetag              Tag der Aufgabe zur Post\n23.10.2026                  19.10.2026\n",
+        _row(0.20, (0.40, "Bekanntgabetag"), (0.65, "Tag der Aufgabe zur Post"))
+        + _row(0.215, (0.40, "23.10.2026"), (0.65, "19.10.2026")),
+        "2026-10-19",
+    ),
+    (
+        "posting-column-on-the-right-without-boxes",
+        "Bekanntgabetag              Tag der Aufgabe zur Post\n23.10.2026                  19.10.2026\n",
+        [],
+        None,
+    ),
+    (
+        "posting-column-on-the-left",
+        "Tag der Aufgabe zur Post    Bekanntgabetag\n19.10.2026                  23.10.2026\n",
+        _row(0.20, (0.40, "Tag der Aufgabe zur Post"), (0.65, "Bekanntgabetag"))
+        + _row(0.215, (0.40, "19.10.2026"), (0.65, "23.10.2026")),
+        "2026-10-19",
+    ),
+    (
+        "posting-column-on-the-left-without-boxes",
+        "Tag der Aufgabe zur Post    Bekanntgabetag\n19.10.2026                  23.10.2026\n",
+        [],
+        None,
+    ),
+    (
+        "an-appointment-s-column-with-boxes",
+        "Termin   Aufgabe zur Post\n22.10.2026   19.10.2026",
+        _row(0.30, (0.40, "Termin"), (0.60, "Aufgabe zur Post"))
+        + _row(0.315, (0.40, "22.10.2026"), (0.60, "19.10.2026")),
+        "2026-10-19",
+    ),
+    (
+        "the-only-date-under-another-column",
+        "Bekanntgabetag   Tag der Aufgabe zur Post\n23.10.2026\n",
+        _row(0.20, (0.40, "Bekanntgabetag"), (0.65, "Tag der Aufgabe zur Post"))
+        + _row(0.215, (0.40, "23.10.2026")),
+        None,
+    ),
+    (
+        "beside-the-address",
+        "Frau Erika Beispiel          Tag der Aufgabe zur Post\nLindenweg 4                  19.10.2026\n",
+        _row(0.20, (0.10, "Frau Erika Beispiel"), (0.65, "Tag der Aufgabe zur Post"))
+        + _row(0.215, (0.10, "Lindenweg 4"), (0.65, "19.10.2026")),
+        "2026-10-19",
+    ),
+    ("alone-under-its-label-without-boxes", "Versanddatum\n19.10.2026\n", [], "2026-10-19"),
+    (
+        "a-table-s-row",
+        "Steuerart   Zeitraum   Aufgabe zur Post\nESt   2025   19.10.2026",
+        _row(0.40, (0.10, "Steuerart"), (0.40, "Zeitraum"), (0.65, "Aufgabe zur Post"))
+        + _row(0.415, (0.10, "ESt"), (0.40, "2025"), (0.65, "19.10.2026")),
+        None,
+    ),
+]
+
+
+def test_a_label_ending_its_line_takes_only_the_date_under_it() -> None:
+    """A posting label that ends its line takes the next line's date only where it stands under the label on the
+    page (the words' boxes), as the header's "Datum" is read; without boxes only a label and a date each alone on
+    their line; never a table's row — so another column's date (the day of delivery, an appointment) is never the
+    posting day."""
+
+    def check(_id: str, text: str, words: list[list[Any]], day: str | None) -> None:
+        statement = posting_statement([(1, text, words, "text")], LETTER)
+        assert statement is not None
+        assert statement.day == (D(day) if day else None), statement
+
+    check_rows(TWO_ROWS, check)
 
 
 def test_a_photo_s_transcription_is_model_read_unless_a_text_page_says_it_too() -> None:
@@ -328,3 +473,63 @@ async def test_two_posting_days_on_a_letter_make_its_to_do_please_check(data_dir
         assert objection.due_date == "2026-11-23"  # from the earlier, Mon 19 Oct
         assert objection.computation is not None and TWO_POSTING_DAYS in objection.computation.rule_ids
         assert objection.computation.confidence == "low" and needs_check(objection)
+
+
+#: A made-up health insurer's decision (SGB X) dated Fri 16 Oct 2026 that dates the dispatch of the person's new
+#: card, not its own posting.
+A_CARD_S_DISPATCH = Letter(
+    marker="Kartenprobe",
+    pages=(
+        (
+            "Musterkasse Musterstadt · Postfach 4 · 12345 Musterstadt",
+            "SPECIMEN Kartenprobe",
+            "Versichertennummer A123456789   Datum 16.10.2026",
+            "Ihre neue Gesundheitskarte – Versanddatum: 19.10.2026",
+            "Bescheid über Ihre Familienversicherung",
+            "Sehr geehrter Herr Beispiel,",
+            "die Familienversicherung Ihrer Tochter endet am 31.10.2026.",
+            "Rechtsbehelfsbelehrung",
+            "Gegen diesen Bescheid kann innerhalb eines Monats nach Bekanntgabe Widerspruch erhoben werden.",
+        ),
+    ),
+    payload={
+        "kind": "health_insurance",
+        "title": "Family insurance ends",
+        "summary": "Family insurance ends.",
+        "explanation": "You may object within a month.",
+        "sender": {"name": "Musterkasse Musterstadt", "kind": "health_insurer"},
+        "document_date": "2026-10-16",
+        "remedy": {"type": "widerspruch", "quote": "Gegen diesen Bescheid kann innerhalb eines Monats"},
+        "items": [
+            {
+                "kind": "deadline",
+                "title": "Object to the decision",
+                "date": {
+                    "type": "relative",
+                    "anchor": "deemed_delivery",
+                    "amount": 1,
+                    "unit": "months",
+                    "delivery_rule": "de_admin_post",
+                    "nature": "objection",
+                    "legal_basis": "§ 84 SGG",
+                },
+                "quote": "Gegen diesen Bescheid kann innerhalb eines Monats nach Bekanntgabe Widerspruch erhoben werden.",
+            }
+        ],
+    },
+)
+
+
+@pytest.mark.usefixtures("pinned_today")
+async def test_a_card_s_dispatch_day_never_moves_the_letter_s_deadline(data_dir: Path) -> None:
+    """Through the app's own path: the card's "Versanddatum" is not this letter's posting day, so the objection
+    counts from the letter's date — Fri 16 Oct → Tue 20 Oct (§ 37 Abs. 2 SGB X) → Fri 20 Nov — not from 19 Oct."""
+    router = ApiRouter()
+    router.letters = (A_CARD_S_DISPATCH, *router.letters)
+    router.payloads[A_CARD_S_DISPATCH.marker] = A_CARD_S_DISPATCH.extraction()
+    async with api_for(data_dir, router=router) as api:
+        doc_id = (await api.upload(("karte.pdf", A_CARD_S_DISPATCH.pdf())))["documents"][0]["id"]
+        await api.read_all()
+        [objection] = [item for item in api.ctx.store.list_items(doc_id=doc_id) if item.kind == "deadline"]
+        assert objection.due_date == "2026-11-20"
+        assert objection.computation is not None and POSTED_ON_LETTER not in objection.computation.rule_ids
