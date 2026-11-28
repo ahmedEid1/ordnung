@@ -632,15 +632,21 @@ date of how long something lasts ("gilt bis", "ist bis … gültig", "läuft bis
 "weiter beliefert", "continues until") or a relative clause's ("Unterlagen, die bis … eingehen, …") —
 and for a period counted from the letter a date the letter gives for itself ("mit diesem Bescheid vom
 …"; a decision's own date in one form only, the authority acting by it in the first person and the present
-tense: "Mit (dem) Bescheid / Schreiben vom … <verb> wir / ich" opening its sentence — at its start, at a
-line's start with a capital, in lower case under a table's row or a header's field, or after the salutation —
-with one of the code's listed decision verbs ("setzen wir … fest", "lehne ich … ab") right after the date and
-every other word of the form fixed; every other wording does not count, among them "Mit Bescheid vom … wird /
-werden / ergeht / erhalten Sie …", "Der Bescheid vom … ergeht …", "Die Gebühr wird mit Bescheid vom …
-festgesetzt", a compound such as "Änderungsbescheid", a file number between the date and the verb, and every
-English one, because they read the same for an earlier decision told of, a set-off, a revocation or another
-authority's act; or the first "Datum:" / "Date:" label of its header: on the label's line, or right under it on the
-page; never a table's, an event's — "Tatort", "Uhrzeit", "Termin" — or another decision's "Datum des
+tense: "Mit (dem) Bescheid / Schreiben vom … <verb> wir / ich" opening its sentence on the letter's first sheet
+— at the page's first words, with a capital after a sentence's end (a full stop after a word of four letters or
+more, "!" or "?"), right after the salutation's comma (the salutation alone on its line before it), or on the
+line under a header's "Datum:" field or a table's row of one word and a date — with one of the code's listed
+decision verbs ("setzen wir … fest", "lehne ich … ab") right after the date on its line and every other word of
+the form fixed; every other wording or place does not count, among them "Mit Bescheid vom … wird / werden /
+ergeht / erhalten Sie …", "Der Bescheid vom … ergeht …", "Die Gebühr wird mit Bescheid vom … festgesetzt", a
+compound such as "Änderungsbescheid", a file number between the date and the verb, the verb on the next line,
+every English one, words between the salutation's comma and "mit", a line ending in ":" above it (a quotation's
+lead-in), a heading, a line of nouns ending in a number, a list's mark, an abbreviation's full stop, ";", and a
+later page or a sheet after a form feed (an enclosure), because they read the same for an earlier decision told
+of, a quotation, a set-off, a revocation or another authority's act. The form's known limit, which it has
+always had: a sentence that tells of another decision in the form itself (first person, present tense, a listed
+verb, at a place where it opens) counts; that keeps the earlier date with "Please check", the safe side; or the
+first "Datum:" / "Date:" label of its header: on the label's line, or right under it on the page; never a table's, an event's — "Tatort", "Uhrzeit", "Termin" — or another decision's "Datum des
 Bescheids") — never its own sentence, another to-do's date, a statement naming another amount, another
 kind of payment (instalments, a prepayment, a fee, a direct debit, "erstmals am …"), another remedy,
 something else to send (the documents' date is not the questionnaire's) or another right to cancel, one

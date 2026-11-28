@@ -26,9 +26,11 @@ second statement:
   period counted from the letter, a date the letter gives for itself ("mit diesem Bescheid vom …", "this
   letter dated …"; a decision's own date only in the one form of :func:`_own_decision`, the authority acting
   by it in the first person and the present tense — "Mit (dem) Bescheid / Schreiben vom … setzen wir / lehne ich
-  …" opening its sentence, every word from a short list — and every other wording does not count, the passive
-  "… wird …", "… ergeht …", "… erhalten Sie …" and English among them: they read the same for an earlier
-  decision told of, a set-off, a revocation or another authority's act); and the first "Datum:" / "Date:"
+  …" opening its sentence on the letter's first sheet (the page's first words, after a sentence's end, the
+  salutation's comma, or under a header's "Datum:" field or a table's row: :func:`_opens`), every word from a
+  short list — and every other wording or place does not count, the passive "… wird …", "… ergeht …", "…
+  erhalten Sie …", English, a quotation's lead-in, a heading, a list and an enclosure among them: they read the
+  same for an earlier decision told of, a set-off, a revocation or another authority's act); and the first "Datum:" / "Date:"
   label of its first page's header, :func:`_header_date` — on the label's line or right under it on the
   page, never a "Datum" in its body, a table's, an event's or another decision's, nor a date that reads two
   ways).
@@ -257,34 +259,53 @@ _SELF_DATE = re.compile(
 #: speaker the sentence is not read: the verb with its speaker is the evidence. The passive ("… wird / werden …"),
 #: "… ergeht …", "… erhalten Sie …", "Der Bescheid vom … ergeht", the verb before "mit" and every English wording
 #: read the same whether a letter speaks of itself or tells of an earlier decision, a state it left, a set-off, a
-#: revocation or another authority's act: no list of words tells them apart, so they do not count. Each listed word
-#: is used by a counted row of the tests (``FORMS_THAT_COUNT``).
+#: revocation or another authority's act: no list of words tells them apart, so they do not count.
+#:
+#: The form's known limit: a sentence that tells of another decision in this same form (first person, present
+#: tense, a listed verb right after the date, at a place where the form opens) counts. That costs some days on the
+#: early side, with "Please check": the check only ever keeps the earlier of two dates. A letter that names two
+#: dates for itself and is not seen would cost days on the late side, unflagged.
 #:
 #: The decision the phrase names: "(mit) (dem) Bescheid / Schreiben vom" — not a compound ("Änderungsbescheid"), a
 #: possessive ("Ihrem", "unserem") or an adjective before the noun, which name a decision of their own.
 _OWN_CUE = re.compile(r"\bmit\s+(?:dem\s+)?(?:bescheid|schreiben)\s+vom\s*$", re.IGNORECASE)
 #: The verbs an authority regulates a case with, in the present tense ("setzen wir … fest", "lehnen wir … ab",
-#: "ordnen wir … an"): what makes a letter an administrative act (§ 35 VwVfG, § 118 AO, § 31 SGB X). Their past
-#: forms ("setzten") are not here, nor "haben" or "hatten": a decision named in the past is an earlier one. Nor a
-#: verb that takes "mit" for its object ("verrechnen", "vergleichen", "verbinden": the decision is then what
-#: something is set against), nor one that only asks or reminds ("bitten", "erinnern", "mahnen": a reminder names
-#: the earlier letter it repeats).
+#: "ordnen wir … an"): what makes a letter an administrative act (§ 35 VwVfG, § 118 AO, § 31 SGB X). The first 14
+#: are the ones this check has always read; the others are the remaining regulating verbs of administrative German
+#: (to impose, forbid, revoke, take back, correct, refuse, withdraw, grant, approve, raise, lower, defer, extend).
+#: Their past forms ("setzten") are not here, nor "haben" or "hatten": a decision named in the past is an earlier
+#: one. Nor a verb that takes "mit" for its object ("verrechnen", "vergleichen", "verbinden": the decision is then
+#: what something is set against), nor one that only asks or reminds ("bitten", "erinnern", "mahnen": a reminder
+#: names the earlier letter it repeats).
 _DECISION_VERBS = (
     "entscheiden", "setzen", "lehnen", "bewilligen", "gewähren", "fordern", "erheben", "stellen", "teilen",
     "ändern", "heben", "erstatten", "erlassen", "bestätigen", "weisen", "ordnen", "verpflichten", "untersagen",
     "widerrufen", "nehmen", "berichtigen", "versagen", "entziehen", "erteilen", "genehmigen", "erhöhen",
     "mindern", "senken", "stunden", "verlängern",
 )  # fmt: skip
-#: The same verbs as a head of office writes them with "ich" ("setze ich", "ändere ich").
+#: The same verbs as a head of office writes them with "ich" ("setze ich", "ändere ich"): an authority headed by one
+#: person (a mayor, a district administrator, an office's head) decides in the first person singular, as a board
+#: decides with "wir".
 _DECISION_VERBS_I = tuple(verb[:-1] if verb.endswith("en") else f"{verb[:-1]}e" for verb in _DECISION_VERBS)
 #: Each speaker with its own verb forms ("setzen wir", "setze ich"). Never "Sie" ("Mit Schreiben vom … teilen Sie
 #: mit": the reader's own letter) nor a third person ("setzt die Stadt"): that tells what someone else does.
 _SPEAKER_VERBS = {"wir": frozenset(_DECISION_VERBS), "ich": frozenset(_DECISION_VERBS_I)}
-#: The verb and its speaker, right after the date ("… vom 09.06.2026 setzen wir").
-_OWN_VERB = re.compile(r"\s+(?P<verb>[^\W\d_]+)\s+(?P<speaker>[^\W\d_]+)\b")
-#: A line that ends in a date or a number ("Vorauszahlungen 02.03.2026", "· Datum: 02.03.2026"): its words before
-#: that value, and the value (:func:`_field_line`).
-_VALUE_ENDS_LINE = re.compile(r"(?P<words>[^\n]*?)[ \t]*\d[\d./-]*[ \t]*\n[ \t]*$")
+#: The verb and its speaker, right after the date on its line ("… vom 09.06.2026 setzen wir"); never across a line
+#: break, where the line above may be a quotation's or a table's end.
+_OWN_VERB = re.compile(r"[ \t]+(?P<verb>[^\W\d_]+)[ \t]+(?P<speaker>[^\W\d_]+)\b")
+#: A sentence that ends right before the form: a full stop after a word of at least four letters, or "!" or "?". A
+#: number's full stop ("1.", "II.") is a list's mark, a short word's ("Az.", "Nr.", "vgl.") an abbreviation's, and
+#: ";" or ":" go on with the sentence: none of them starts one.
+_SENTENCE_ENDED = re.compile(r"(?:(?<![^\W\d_])[^\W\d_]{4,}\.|[!?])[ \t]*\n?[ \t]*$")
+#: The salutation's own line and its comma, right before the form ("Sehr geehrte Frau Beispiel,\nmit …"): the whole
+#: line up to its only comma is the salutation, so no words of a sentence of their own stand between.
+_SALUTATION_ENDS = re.compile(r"(?:^|\n)[ \t]*(?P<salutation>[^\n,]*),[ \t]*\n?[ \t]*$")
+#: A table's row or a header's field on the line right above the form (:func:`_field_line`): one capitalised word
+#: and a date ("Vorauszahlungen 02.03.2026": a row whose column gap the text layer folds), or a "Datum:" / "Date:"
+#: label and its date, the label at the line's start or after a "·" ("Steuernummer 4711 · Datum: 02.03.2026").
+_FIELD_LINE = re.compile(
+    r"(?:^|\n)[ \t]*(?:[A-ZÄÖÜ][a-zäöüß]+[ \t]+|(?:[^\n]*·[ \t]*)?(?:Datum|Date):[ \t]*)(?P<value>\d[^\n]*?)[ \t]*\n[ \t]*$"
+)
 #: Where a sentence ends: a full stop, "!", "?" or ";" before a capital letter or an opening quote.
 _SENTENCE_END = re.compile(r"[.!?;]\s+(?=[A-ZÄÖÜ\"(])")
 #: A label's colon ("Rechnungsdatum: …", "Total due: …"), not a time's ("10:00").
@@ -651,58 +672,62 @@ def _relative_deadline(clause: str, grounding: Grounding) -> list[_Statement]:
     return found
 
 
-def _field_line(before: str) -> bool:
-    """Whether the line just above (``before`` ends with it and its line break) is a table's row or a header's field,
-    not a sentence's: it ends in a date or a number, and the words before that value are a label with its colon
-    ("Bescheid über Vorauszahlungen · Datum: 02.03.2026") or capitalised words and numbers only ("Vorauszahlungen
-    02.03.2026", a row of a table). A sentence broken right after a date or a number ("Ihren Widerspruch gegen den
-    Bescheid vom 02.06.2026", "Ihre Zahlung zum Kassenzeichen 4711") has lower-case words that tie the next line to
-    it: the words before "mit" then decide whose date it is, and the form has no place for them."""
-    value = _VALUE_ENDS_LINE.search(before)
-    if value is None:
+def _field_line(near: str) -> bool:
+    """Whether the line right above the form (``near`` ends with it and its line break) is a table's row or a header's
+    field (:data:`_FIELD_LINE`), not a sentence's: one capitalised word and a date ("Vorauszahlungen 02.03.2026"), or
+    a "Datum:" / "Date:" label and its date, nothing else after it. A line of nouns that merely ends in a number
+    ("Ihren Widerspruch Az. 32-117/2026", "Die Erlaubnis Nr. 4711", "Anlage 2"), a label of any other kind
+    ("Kassenzeichen: 4711") or a heading may be a sentence broken by the text layer, a quotation's lead-in or a part of
+    the body; the words above "mit" then decide whose date it is, and the form has no place for them."""
+    field = _FIELD_LINE.search(near)
+    if field is None:
         return False
-    words = value["words"].rsplit("\n", 1)[-1].split()
-    return bool(words) and (
-        words[-1].endswith(":") or all(word[:1].isupper() or word[:1].isdigit() for word in words)
-    )
+    value = field["value"]
+    return any((start, end) == (0, len(value)) for start, end, _ in date_spans(value))
 
 
 def _opens(before: str, first: str) -> bool:
-    """Whether a form whose first word is ``first`` opens its sentence (``before``: the sentence's text before it):
-    at the sentence's start; at a line's start with a capital ("Gebührenbescheid" over "Mit Bescheid vom …"), or in
-    lower case under a table's row or a header's field (:func:`_field_line`); or right after a salutation's comma
-    ("Sehr geehrte Frau Beispiel,\\nmit Bescheid vom …"). Anywhere else the words before it decide whose date it is
-    ("Nach Anhörung\\nmit Schreiben vom …"), and the form has no place for them."""
-    tail = before[-_CUE_REACH:]  # only the words just before it decide (and a long line stays fast)
-    if not tail.strip():
-        # a capital after a line break opens its sentence; the line above is too far back to read
-        return not before.strip() or (first[:1].isupper() and "\n" in tail)
-    if re.search(r"\n[ \t]*$", tail) and (first[:1].isupper() or _field_line(tail)):
+    """Whether a form whose first word is ``first`` opens its sentence, ``before`` being the page's text before it.
+    It opens in four places only: at the page's first words; at a capital after a sentence's end
+    (:data:`_SENTENCE_ENDED`: never after a list's mark, an abbreviation's full stop, ";" or ":"); right after the
+    salutation's comma, the salutation alone on its line before it ("Sehr geehrte Frau Beispiel,\\nmit Bescheid
+    vom …", :data:`_SALUTATION_ENDS`); or on the line under a table's row or a header's field
+    (:func:`_field_line`). Anywhere else the words before it decide whose date it is: a line ending in ":" leads into a
+    quotation, a heading ("Sachverhalt", "Bisheriger Bescheid") into a part that may tell of an earlier decision, and
+    words before it on its line or the line above ("Nach Anhörung\\nmit Schreiben vom …", "Sie meinen, mit Bescheid
+    vom …") make it part of another sentence. Unknown means no."""
+    if not before.strip():
         return True
-    line = re.search(r"([^\n]*),[ \t]*\n?[ \t]*$", tail)
-    return bool(line and _SALUTATION.match(line.group(1).strip()))
+    # the line above and the form's own line are all that is read
+    near = "\n".join(before.rsplit("\n", 2)[-2:])
+    if first[:1].isupper() and _SENTENCE_ENDED.search(near):
+        return True
+    salutation = _SALUTATION_ENDS.search(near)
+    if salutation is not None and _SALUTATION.match(salutation["salutation"].strip()):
+        return True
+    return near.endswith("\n") and _field_line(near)
 
 
-def _own_decision(clause: str, start: int, end: int) -> int | None:
+def _own_decision(clause: str, start: int, end: int, lead: str) -> int | None:
     """Where the words start that name the date at ``clause[start:end]`` the date of this letter's own decision, or
-    ``None``. One form counts, backed by the rows of the tests' ``FORMS_THAT_COUNT``: the sentence opens
-    (:func:`_opens`) with "Mit (dem) Bescheid vom" or "Mit (dem) Schreiben vom" (:data:`_OWN_CUE`), and right after
-    the date stands a listed decision verb in the present tense with its speaker (:data:`_SPEAKER_VERBS`): "Mit
-    Bescheid vom … setzen wir … fest", "… lehne ich … ab". German puts the finite verb right after a phrase that
-    opens the sentence, so the phrase belongs to that verb's clause, and the first person in the present tense is
-    the authority acting by that decision now.
+    ``None`` (``lead``: the page's text before ``clause``). One form counts, backed by the rows of the tests'
+    ``FORMS_THAT_COUNT``: the sentence opens (:func:`_opens`) with "Mit (dem) Bescheid vom" or "Mit (dem) Schreiben
+    vom" (:data:`_OWN_CUE`), and right after the date, on its line, stands a listed decision verb in the present tense
+    with its speaker (:data:`_SPEAKER_VERBS`): "Mit Bescheid vom … setzen wir … fest", "… lehne ich … ab". German puts
+    the finite verb right after a phrase that opens the sentence, so the phrase belongs to that verb's clause, and the
+    first person in the present tense is the authority acting by that decision now.
 
     Everything else does not count (the letter's other dates still do, its header's first of all). Recall is given
     up on purpose: "Mit Bescheid vom … wird / werden / ergeht / erhalten Sie …", "Der Bescheid vom … ergeht …", "Die
     Gebühr wird mit Bescheid vom … festgesetzt", "Hiermit setzen wir mit Bescheid vom … fest", a compound
-    ("Mit Änderungsbescheid vom …"), a file number between the date and the verb, and every English wording leave
-    the letter's date as read."""
+    ("Mit Änderungsbescheid vom …"), a file number between the date and the verb, the verb on the next line, every
+    English wording, and the form anywhere :func:`_opens` does not name, leave the letter's date as read."""
     reach = max(0, start - _CUE_REACH)
     cue = _OWN_CUE.search(clause[reach:start])
     if cue is None:
         return None
     begins = reach + cue.start()
-    if (begins and clause[begins - 1].isalnum()) or not _opens(clause[:begins], cue.group()):
+    if not _opens(lead + clause[:begins], cue.group()):
         return None
     after = _OWN_VERB.match(clause, end)
     if after is None or after["verb"].casefold() not in _SPEAKER_VERBS.get(after["speaker"].casefold(), ()):
@@ -710,14 +735,18 @@ def _own_decision(clause: str, start: int, end: int) -> int | None:
     return begins
 
 
-def _letter_dates(clause: str, dates: list[tuple[int, int, date]], grounding: Grounding) -> list[_Statement]:
-    """Dates the letter gives for itself ("Mit diesem Bescheid vom 06.04.2027 setzen wir …", :func:`_own_decision`)."""
+def _letter_dates(
+    clause: str, dates: list[tuple[int, int, date]], grounding: Grounding, lead: str | None
+) -> list[_Statement]:
+    """Dates the letter gives for itself ("Mit diesem Bescheid vom 06.04.2027 setzen wir …"; a decision's own date,
+    :func:`_own_decision`, only where ``lead``, the page's text before ``clause``, is given: on the letter's own
+    first sheet)."""
     found = []
     for start, end, day in dates:
         before = clause[max(0, start - _CUE_REACH) : start]
         if (cue := _SELF_DATE.search(before)) is not None:
             begins = start - len(before) + cue.start()
-        elif (own := _own_decision(clause, start, end)) is not None:
+        elif lead is not None and (own := _own_decision(clause, start, end, lead)) is not None:
             begins = own
         else:
             continue
@@ -726,6 +755,13 @@ def _letter_dates(clause: str, dates: list[tuple[int, int, date]], grounding: Gr
             _Statement(DateSpec(type="none", text=phrase), phrase, clause, grounding, letter_date=day)
         )
     return found
+
+
+def _sheet_lines(text: str) -> int:
+    """How many of the page's lines (as :func:`_clauses` keeps them) stand before its first form feed: the letter's own
+    first sheet. A form feed starts another sheet, an enclosure's or another letter's in the same upload."""
+    first = fold_punctuation(text.split("\f", 1)[0])
+    return sum(1 for line in first.splitlines() if line.strip())
 
 
 def _one_date(line: str, start: int, end: int) -> date | None:
@@ -847,13 +883,19 @@ def letter_statements(pages: Sequence[PageInput], *, blocks: bool = True) -> lis
     found: list[_Statement] = []
     for index, page in enumerate(pages):
         text, grounding = _page_text(page)
+        # a decision's own date only on the letter's first sheet: a later page may be an enclosed copy of an earlier
+        # decision, the reader's own letter or another authority's, each with a "Mit Bescheid vom …" of its own
+        sheet = _sheet_lines(text) if index == 0 else 0
         if index == 0:
             found += _header_date(text, _page_words(page), grounding, blocks=blocks)
+        lead = ""
         for clause, dates in _clauses(text):
             found += _explicit(clause, dates, grounding)
             found += _relative(clause, grounding)
             found += _relative_deadline(clause, grounding)
-            found += _letter_dates(clause, dates, grounding)
+            on_sheet = (lead + clause).rstrip().count("\n") < sheet
+            found += _letter_dates(clause, dates, grounding, lead if on_sheet else None)
+            lead += clause
     return found
 
 

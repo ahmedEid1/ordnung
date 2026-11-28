@@ -1475,21 +1475,37 @@ def test_the_form_that_counts_is_a_date_the_letter_gives_for_itself() -> None:
     check_rows(FORMS_THAT_COUNT, check)
 
 
-def test_the_forms_lists_are_these_words_and_each_is_used_by_a_counted_row() -> None:
-    """The form's lists are pinned word for word, so widening one is a reviewed edit of this test; and each listed word
-    has a counted row above, so a word no row needs cannot stay in a list."""
-    assert conflicts._DECISION_VERBS == (
-        "entscheiden", "setzen", "lehnen", "bewilligen", "gewähren", "fordern", "erheben", "stellen", "teilen",
-        "ändern", "heben", "erstatten", "erlassen", "bestätigen", "weisen", "ordnen", "verpflichten", "untersagen",
-        "widerrufen", "nehmen", "berichtigen", "versagen", "entziehen", "erteilen", "genehmigen", "erhöhen",
-        "mindern", "senken", "stunden", "verlängern",
-    )  # fmt: skip
+#: The 14 verbs this check has always read, with "wir".
+MAIN_VERBS = (
+    "entscheiden", "setzen", "lehnen", "bewilligen", "gewähren", "fordern", "erheben", "stellen", "teilen",
+    "ändern", "heben", "erstatten", "erlassen", "bestätigen",
+)  # fmt: skip
+#: The verbs read beyond those, and why: they are the other regulating verbs of administrative German, chosen as a
+#: rule of the language, not for any one letter (no row and no measured letter needs them more than that). Their rows
+#: in FORMS_THAT_COUNT show each one counts as written, so a misspelt entry fails; they are not what justifies it.
+REGULATING_VERBS = (
+    "weisen", "ordnen", "verpflichten", "untersagen", "widerrufen", "nehmen", "berichtigen", "versagen", "entziehen",
+    "erteilen", "genehmigen", "erhöhen", "mindern", "senken", "stunden", "verlängern",
+)  # fmt: skip
+
+
+def test_the_forms_lists_are_these_words() -> None:
+    """The form's lists and patterns are pinned word for word, so widening one is a reviewed edit of this test. The
+    speaker "ich" is read beside "wir" because an authority headed by one person decides in the first person singular
+    (the code's comment on ``_DECISION_VERBS_I``); each speaker takes its own verb forms only."""
+    assert conflicts._DECISION_VERBS == MAIN_VERBS + REGULATING_VERBS
     assert set(conflicts._SPEAKER_VERBS) == {"wir", "ich"}
     assert conflicts._SPEAKER_VERBS["wir"] == set(conflicts._DECISION_VERBS)
     assert conflicts._SPEAKER_VERBS["ich"] == set(conflicts._DECISION_VERBS_I)
     assert not set(conflicts._DECISION_VERBS) & set(conflicts._DECISION_VERBS_I)  # "setze wir" never counts
     assert conflicts._OWN_CUE.pattern == r"\bmit\s+(?:dem\s+)?(?:bescheid|schreiben)\s+vom\s*$"
-    assert conflicts._OWN_VERB.pattern == r"\s+(?P<verb>[^\W\d_]+)\s+(?P<speaker>[^\W\d_]+)\b"
+    assert conflicts._OWN_VERB.pattern == r"[ \t]+(?P<verb>[^\W\d_]+)[ \t]+(?P<speaker>[^\W\d_]+)\b"
+    assert conflicts._SENTENCE_ENDED.pattern == r"(?:(?<![^\W\d_])[^\W\d_]{4,}\.|[!?])[ \t]*\n?[ \t]*$"
+    assert conflicts._SALUTATION_ENDS.pattern == r"(?:^|\n)[ \t]*(?P<salutation>[^\n,]*),[ \t]*\n?[ \t]*$"
+    assert conflicts._FIELD_LINE.pattern == (
+        r"(?:^|\n)[ \t]*(?:[A-ZÄÖÜ][a-zäöüß]+[ \t]+|(?:[^\n]*·[ \t]*)?(?:Datum|Date):[ \t]*)(?P<value>\d[^\n]*?)"
+        r"[ \t]*\n[ \t]*$"
+    )
     rows = [row.values[0] for row in FORMS_THAT_COUNT]
     for verb in conflicts._DECISION_VERBS:
         assert any(f" {verb} wir|" in row for row in rows), verb
@@ -1498,23 +1514,220 @@ def test_the_forms_lists_are_these_words_and_each_is_used_by_a_counted_row() -> 
     assert any(row.startswith("Mit Schreiben") for row in rows)
 
 
-def test_a_form_opens_its_sentence_under_a_heading_or_a_table_row_but_not_inside_one() -> None:
-    """A form opens its sentence at a line's start with a capital, or in lower case under a table's row or a header's
-    field (its last value after a column gap or a label's colon); never after words of its own sentence on the line
-    above, a sentence broken right after a date or a number among them."""
-    assert _own_dates(
-        "Mit Bescheid vom 09.06.2026 setzen wir die Gebühr fest.", above="Gebührenbescheid\n"
-    ) == [date(2026, 6, 9)]
-    assert _own_dates(
-        "mit Bescheid vom 09.06.2026 setzen wir Zinsen fest.", above="Vorauszahlungen   02.03.2026\n"
-    ) == [date(2026, 6, 9)]
-    assert _own_dates(
+def _page_dates(*pages: str) -> list[date]:
+    """The dates a made-up upload of these pages gives for the letter itself."""
+    read = [(number, text, [], "text") for number, text in enumerate(pages, 1)]
+    return [statement.letter_date for statement in letter_statements(read) if statement.letter_date]
+
+
+#: Made-up pages on which the form opens where it may (``conflicts._opens``): the page's first words, a capital after
+#: a sentence's end ("." after a word, "!" or "?"), the salutation's comma (the salutation alone on its line, on the
+#: same line as the form or the line above), and the line under a header's "Datum:" field or a table's row of one
+#: word and a date. Each gives 09.06.2026 for the letter itself.
+PLACES_THAT_COUNT = [
+    pytest.param("Mit Bescheid vom 09.06.2026 setzen wir die Gebühr fest.", id="the-pages-first-words"),
+    pytest.param(
+        "Stadt Musterstadt\nSehr geehrte Frau Beispiel, mit Bescheid vom 09.06.2026 setzen wir die Gebühr fest.",
+        id="salutation-same-line",
+    ),
+    pytest.param(
+        "Stadt Musterstadt\nSehr geehrte Frau Dr. Beispiel,\nmit Bescheid vom 09.06.2026 lehne ich den Antrag ab.",
+        id="salutation-with-an-abbreviation",
+    ),
+    pytest.param(
+        "Stadt Musterstadt\nSehr geehrte Damen und Herren,\nMit Bescheid vom 09.06.2026 setzen wir die Gebühr fest.",
+        id="salutation-then-a-capital",
+    ),
+    pytest.param(
+        "Stadt Musterstadt\nGuten Tag Herr Muster,\nmit Schreiben vom 09.06.2026 teilen wir Ihnen die Höhe mit.",
+        id="guten-tag",
+    ),
+    pytest.param(
+        "Stadt Musterstadt\nSehr geehrte Frau Beispiel,\nwir schreiben wegen der Hundesteuer. Mit Bescheid vom "
+        "09.06.2026 setzen wir die Steuer fest.",
+        id="after-a-sentence",
+    ),
+    pytest.param(
+        "Stadt Musterstadt\nSehr geehrte Frau Beispiel,\nIhr Antrag ist vollständig.\nMit Bescheid vom "
+        "09.06.2026 bewillige ich das Wohngeld.",
+        id="after-a-sentence-on-the-line-above",
+    ),
+    pytest.param(
+        "Stadt Musterstadt\nSehr geehrte Frau Beispiel,\nwas ändert sich? Mit Bescheid vom 09.06.2026 senken wir "
+        "die Gebühr.",
+        id="after-a-question",
+    ),
+    pytest.param(
+        "Stadt Musterstadt · Ordnungsamt\nDatum: 09.06.2026\nMit Bescheid vom 09.06.2026 setzen wir die Gebühr fest.",
+        id="under-the-headers-datum",
+    ),
+    pytest.param(
+        "Stadt Musterstadt\nSehr geehrte Damen und Herren,\nBescheid Datum\nVorauszahlungen   02.03.2026\n"
         "mit Bescheid vom 09.06.2026 setzen wir Zinsen fest.",
-        above="Bescheid über Vorauszahlungen · Datum: 02.03.2026\n",
-    ) == [date(2026, 6, 9)]
+        id="under-a-table-row",
+    ),
+    pytest.param(
+        "Stadt Musterstadt\nSehr geehrte Damen und Herren,\nBescheid über Vorauszahlungen · Datum: 02.03.2026\n"
+        "mit Bescheid vom 09.06.2026 setzen wir Zinsen fest.",
+        id="under-a-fields-datum",
+    ),
+]
+
+
+def test_the_form_opens_only_where_its_sentence_starts() -> None:
+    check_rows(PLACES_THAT_COUNT, lambda page: _assert_in(date(2026, 6, 9), _page_dates(page)))
+
+
+def _assert_in(day: date, found: list[date]) -> None:
+    assert day in found
+
+
+def _assert_not_in(day: date, found: list[date]) -> None:
+    assert day not in found
+
+
+#: Made-up pages on which "Mit Bescheid vom D <listed verb> wir / ich" stands where the form does not open, and D is
+#: another decision's or letter's date (09.06.2026 or 02.03.2026, never the letter's own): the reviews' rows. A line
+#: of nouns ending in a number, a label of another kind, a line ending in ":" (a quotation's lead-in), a heading, a
+#: list's mark, an abbreviation's full stop, ";", words between the salutation's comma and "mit", the verb on the
+#: next line, and an enclosure's or another letter's page. None may count.
+H = "Stadt Musterstadt · Ordnungsamt\nDatum: 16.06.2026\nSehr geehrte Frau Beispiel,\n"
+N = "Stadt Musterstadt · Ordnungsamt\nDatum: 16.06.2026\n"
+F = "Stadt Musterstadt\n"
+G = "Sehr geehrte Frau Beispiel,\n"
+PLACES_THAT_DO_NOT_COUNT = [
+    # a line of capitalised words broken after a number, or a label of another kind
+    pytest.param(N + "Ihren Widerspruch Az. 32-117/2026\nmit Schreiben vom 09.06.2026 weisen wir als unbegründet zurück.", id="F01"),
+    pytest.param(N + "Die Erlaubnis Nr. 4711\nmit Bescheid vom 09.06.2026 widerrufen wir mit Wirkung für die Zukunft.", id="F02"),
+    pytest.param(N + "Die Abwassergebühr 2025\nmit Bescheid vom 09.06.2026 erhöhen wir ab Juli um 12,00 EUR.", id="F03"),
+    pytest.param(N + "Die Vorauszahlungen 2026\nmit Bescheid vom 09.06.2026 mindern wir auf 40,00 EUR.", id="F04"),
+    pytest.param(N + "Die Frist Kassenzeichen 5512\nmit Schreiben vom 09.06.2026 verlängern wir bis Ende Juli.", id="F05"),
+    pytest.param(N + "Den Fehler Az. 77-4/2026\nmit Bescheid vom 09.06.2026 berichtigen wir nach § 42 VwVfG.", id="F06"),
+    pytest.param(N + "Ihren Bauantrag Nr. 2026/88\nmit Schreiben vom 09.06.2026 genehmigen wir nicht.", id="F07"),
+    pytest.param(N + "Die Forderung Kassenzeichen 600123\nmit Bescheid vom 09.06.2026 stunden wir nicht weiter.", id="F08"),
+    pytest.param(N + "Ihren Antrag Az. 12/2026\nmit Schreiben vom 09.06.2026 nehmen wir zu den Akten.", id="F09"),
+    pytest.param(N + "Die Grundsteuer 2026\nmit Bescheid vom 09.06.2026 senken wir nicht.", id="F10"),
+    pytest.param(N + "Ihr Einwand zum Aktenzeichen: 4711\nmit Schreiben vom 09.06.2026 weisen wir zurück.", id="F11"),
+    pytest.param(N + "Die Kosten Höhe 80,00\nmit Bescheid vom 09.06.2026 erhöhen wir nicht.", id="F12"),
+    pytest.param(N + "Ihren Antrag Nr. 17\nmit Schreiben vom 09.06.2026 lehne ich erneut ab, wie im Bescheid ausgeführt.", id="F13"),
+    pytest.param(N + "Die Fahrerlaubnis Klasse B 2019\nmit Bescheid vom 09.06.2026 entziehen wir, wie Ihnen bekannt.", id="F15"),
+    pytest.param(N + "Den Ausschank Nr. 3\nmit Bescheid vom 09.06.2026 untersagen wir bis heute.", id="F16"),
+    pytest.param(N + "Bescheid 2026\nmit Bescheid vom 09.06.2026 widerrufen wir", id="C06"),
+    pytest.param(N + "Schreiben 4711\nmit Schreiben vom 09.06.2026 nehmen wir", id="C07"),
+    pytest.param(N + "Bescheid Schreiben 09.06.2026\nmit Bescheid vom 09.06.2026 ordnen wir", id="C08"),
+    pytest.param(F + G + "Zu Ihrem Widerspruch Az. 32-117/2026\nmit Bescheid vom 02.03.2026 nehmen wir wie folgt Stellung.\n", id="fresh-F1"),
+    pytest.param(F + G + "Ihr Schreiben Nr. 4711\nmit Bescheid vom 02.03.2026 stunden wir nicht, wie Sie meinen.\n", id="fresh-F2"),
+    pytest.param(F + G + "Anlage 2\nmit Bescheid vom 02.03.2026 verlängern wir die Erlaubnis.\n", id="fresh-F3"),
+    pytest.param(F + G + "Ihre Rechnung: 4711\nmit Schreiben vom 02.03.2026 berichtige ich Ihnen nichts.\n", id="fresh-F4"),
+    pytest.param(F + G + "Ihren Widerspruch Az. 32-117/2026\nmit Schreiben vom 02.03.2026 weisen wir als unbegründet zurück.\n", id="fresh-F5"),
+    pytest.param(F + G + "Ihren Antrag Nr. 4711\nmit Schreiben vom 02.03.2026 lehne ich ab.\n", id="fresh-F6"),
+    pytest.param(F + G + "Betreff: Ihr Widerspruch gegen den Bescheid Nr. 12\nmit Schreiben vom 02.03.2026 weisen wir ihn zurück.\n", id="a-colon-in-mid-line"),
+    pytest.param(F + G + "Kassenzeichen: 600123\nmit Bescheid vom 02.03.2026 stunde ich die Forderung.\n", id="a-label-of-another-kind"),
+    pytest.param(F + G + "Eingang: 01.06.2026\nmit Bescheid vom 02.03.2026 weisen wir Ihren Widerspruch zurück.\n", id="another-label-with-a-date"),
+    # a line ending in ":" that leads into a quotation or a report
+    pytest.param(H + "Sie schrieben uns:\nMit Schreiben vom 09.06.2026 widerrufe ich meine Einwilligung zur Lastschrift.\nDas nehmen wir zur Kenntnis.", id="Q01"),
+    pytest.param(H + "Ihr Bevollmächtigter trägt vor:\nMit Schreiben vom 09.06.2026 nehme ich den Antrag meiner Mandantin zurück.\nDem folgen wir.", id="Q02"),
+    pytest.param(H + "Unser Bescheid lautete im Tenor:\nMit Bescheid vom 09.06.2026 untersagen wir Ihnen das Abstellen des Wohnwagens.\nDiesen Bescheid heben wir nunmehr auf.", id="Q03"),
+    pytest.param(H + "Ihr Vermieter hat erklärt:\nMit Schreiben vom 09.06.2026 erhöhe ich die Miete um 30,00 EUR.\nDas berücksichtigen wir beim Wohngeld.", id="Q04"),
+    pytest.param(H + "Das Landratsamt Musterkreis teilte mit:\nMit Bescheid vom 09.06.2026 entziehen wir Herrn Muster die Fahrerlaubnis.\nWir sind daran gebunden.", id="Q05"),
+    pytest.param(H + "Sie und Ihr Ehemann schrieben:\nMit Schreiben vom 09.06.2026 widerrufen wir die Einzugsermächtigung.\nDer Widerruf ist wirksam.", id="Q06"),
+    pytest.param(H + "Ihr Arbeitgeber bescheinigt:\nMit Schreiben vom 09.06.2026 verlängere ich den Vertrag von Frau Beispiel bis 2027.\nDas Einkommen rechnen wir an.", id="Q07"),
+    pytest.param(H + "Auszug aus Ihrem Widerspruch\nMit Schreiben vom 09.06.2026 widerrufe ich die Zustimmung zur Abbuchung.\nWir prüfen das.", id="Q08"),
+    pytest.param(H + "Die Schule hat mitgeteilt:\nMit Schreiben vom 09.06.2026 berichtige ich das Zeugnis von Lena Beispiel.\nWir legen es zugrunde.", id="Q09"),
+    pytest.param(H + "Die Eigentümerin erklärte:\nMit Schreiben vom 09.06.2026 genehmige ich den Umbau.\nDie Genehmigung liegt uns vor.", id="Q10"),
+    pytest.param(H + "das Amt für Soziales schreibt: Mit Bescheid vom 09.06.2026 entscheide ich über die Hilfe. Wir schließen uns an.", id="I12"),
+    pytest.param(F + G + "Sie tragen vor:\nMit Bescheid vom 02.03.2026 widerrufen wir die Erlaubnis.\nDas trifft nicht zu.\n", id="fresh-C1"),
+    pytest.param(F + G + "Das Landratsamt hat uns Folgendes mitgeteilt:\nMit Bescheid vom 02.03.2026 untersagen wir den Betrieb.\n", id="fresh-C2"),
+    pytest.param(F + G + "Auszug aus dem Bescheid des Landratsamts:\nMit Bescheid vom 02.03.2026 entziehen wir die Fahrerlaubnis.\n", id="fresh-C3"),
+    pytest.param(F + G + "In Ihrem Widerspruch zitieren Sie den Bescheid so:\nMit Bescheid vom 02.03.2026 ordne ich den Abriss an.\nDieser Bescheid ist aufgehoben.\n", id="fresh-C4"),
+    pytest.param(F + G + "Ihr Widerspruch richtet sich gegen den Satz\nMit Bescheid vom 02.03.2026 erhöhen wir die Vorauszahlungen.\n", id="fresh-C5"),
+    pytest.param(F + G + "Zur Erinnerung, der frühere Bescheid lautete\nMit Bescheid vom 02.03.2026 genehmigen wir den Umbau.\n", id="fresh-C6"),
+    pytest.param(F + G + "Sie tragen vor:\nMit Bescheid vom 02.03.2026 setzen wir die Gebühr fest.\n", id="fresh-M1"),
+    # a heading over a part of the letter
+    pytest.param(H + "Sachverhalt\nMit Bescheid vom 09.06.2026 erteilen wir Ihnen die Erlaubnis unter Auflagen.\nGründe\nDie Auflage wurde nicht erfüllt.", id="H01"),
+    pytest.param(H + "Bisheriger Bescheid\nMit Bescheid vom 09.06.2026 genehmigen wir 12 Stellplätze.\nNeuer Bescheid\nWir genehmigen 10 Stellplätze.", id="H02"),
+    pytest.param(H + "Vorgang\nMit Bescheid vom 09.06.2026 verpflichten wir Sie zur Beseitigung.", id="H03"),
+    pytest.param(H + "Widerspruch gegen den Bescheid\nMit Bescheid vom 09.06.2026 versagen wir die Leistung.", id="H04"),
+    pytest.param(H + "Begründung\nMit Bescheid vom 09.06.2026 widerrufe ich die Zulassung. Dagegen richtet sich Ihr Widerspruch.", id="H05"),
+    pytest.param(H + "Bescheide im Jahr 2026\nMit Bescheid vom 09.06.2026 erhöhen wir den Abschlag\nMit Bescheid vom 16.06.2026 senken wir ihn wieder", id="H06"),
+    pytest.param(H + "Erstbescheid Änderung\nMit Bescheid vom 09.06.2026 mindern wir den Satz um 10 %.", id="M01"),
+    pytest.param(H + "Seite 2 von 2\nMit Bescheid vom 09.06.2026 verlängern wir die Erlaubnis um ein Jahr, so der frühere Bescheid.", id="M11"),
+    pytest.param(N + "Bescheid\nMit Bescheid vom 09.06.2026 berichtigen wir", id="C12"),
+    pytest.param(N + "Schreiben vom 16.06.2026\nMit Schreiben vom 09.06.2026 teile ich mit", id="C20"),
+    pytest.param(N + "Bescheid 1\nmit dem Bescheid vom 09.06.2026 versagen wir\nBescheid 2\nmit dem Bescheid vom 16.06.2026 genehmigen wir", id="C17"),
+    pytest.param(F + G + "Gebührenbescheid\nMit Bescheid vom 02.03.2026 setzen wir die Gebühr fest.\n", id="a-heading-of-one-word"),
+    # a list's mark, an abbreviation's full stop, ";", a bullet
+    pytest.param(H + "zum Verlauf:\n1. Mit Bescheid vom 09.06.2026 widerrufen wir die Erlaubnis.\n2. Dagegen legten Sie Widerspruch ein.", id="L01"),
+    pytest.param(H + "der Sachstand:\n1. Antrag vom 01.06.2026.\n2. Mit Bescheid vom 09.06.2026 erteilen wir die Genehmigung.\n3. Heute ändern wir sie.", id="L02"),
+    pytest.param(H + "Verlauf:\n1. Mit Schreiben vom 09.06.2026 ordne ich die Anhörung an.\n2. Sie äußerten sich nicht.", id="L03"),
+    pytest.param(H + "Übersicht:\nI. Mit Bescheid vom 09.06.2026 berichtigen wir den Betrag.\nII. Heute setzen wir die Zinsen fest.", id="L04"),
+    pytest.param(H + "Bisher:\n2. Mit Bescheid vom 09.06.2026 stunden wir die Forderung.\n3. Die Stundung ist abgelaufen.", id="L05"),
+    pytest.param(H + "Chronologie\n4. Mit Schreiben vom 09.06.2026 genehmigen wir den Antrag.\n5. Der Antrag wurde zurückgenommen.", id="L06"),
+    pytest.param(N + "1. Mit Bescheid vom 09.06.2026 erteilen wir\n2. Mit Bescheid vom 16.06.2026 widerrufen wir", id="C09"),
+    pytest.param(H + "Ihr Widerspruch vom 10.06.2026, Az. Mit Schreiben vom 09.06.2026 weisen wir darauf hin.", id="M10"),
+    pytest.param(H + "Stand der Sache: Ihr Antrag liegt vor; Mit Bescheid vom 09.06.2026 entziehen wir die Erlaubnis.", id="M02"),
+    pytest.param(H + "Ihre Fragen:\n• Mit Bescheid vom 09.06.2026 senken wir den Abschlag, das ist richtig.", id="M12"),
+    # words between the salutation's comma and "mit"
+    pytest.param(F + "Sehr geehrte Frau Beispiel, Sie meinen, mit Bescheid vom 02.03.2026 widerrufen wir die Erlaubnis. Das trifft nicht zu.\n", id="fresh-S1"),
+    pytest.param(F + "Sehr geehrter Herr Muster, Sie schreiben, mit Bescheid vom 02.03.2026 lehne ich Ihren Antrag ab. Das ist ein Irrtum.\n", id="fresh-S2"),
+    pytest.param(F + "Sehr geehrte Frau Beispiel, anders als Sie annehmen, mit Bescheid vom 02.03.2026 entziehen wir Ihnen nichts.\n", id="fresh-S3"),
+    pytest.param(F + "Sehr geehrte Frau Beispiel, Ihr Anwalt behauptet, mit Bescheid vom 02.03.2026 untersage ich Ihnen den Betrieb.\n", id="fresh-S4"),
+    pytest.param(F + "Sehr geehrte Damen und Herren, Ihre Mandantin trägt vor, mit Bescheid vom 02.03.2026 versagen wir die Leistung.\n", id="fresh-S5"),
+    pytest.param(F + "Sehr geehrte Frau Beispiel,\nwie Sie richtig schreiben,\nmit Bescheid vom 02.03.2026 widerrufe ich die Erlaubnis nicht.\n", id="fresh-S6"),
+    pytest.param(F + "Sehr geehrte Frau Beispiel, Sie meinen, mit Bescheid vom 02.03.2026 lehnen wir Ihren Antrag ab.\n", id="fresh-M2"),
+    # the verb on the next line
+    pytest.param(H + "Mit Bescheid vom 09.06.2026\nwiderrufen wir die Erlaubnis. So stand es im Bescheid.", id="M08"),
+]  # fmt: skip
+
+
+#: An enclosure's or another letter's page in the same upload: a decision's own date is read on the letter's first
+#: sheet only (a form feed starts another sheet).
+ANOTHER_SHEET = [
+    pytest.param(H + "anbei erhalten Sie eine Kopie unseres Bescheids.\n", "Stadt Musterstadt\nAbschrift\nMit Bescheid vom 09.06.2026 untersagen wir Ihnen die Nutzung der Garage.", id="E01"),
+    pytest.param(H + "als Anlage übersenden wir den Bescheid erneut.\n", "Der Oberbürgermeister\nMit Bescheid vom 09.06.2026 versage ich die Erlaubnis.", id="E02"),
+    pytest.param(H + "wir bestätigen den Eingang Ihres Schreibens (Anlage).\n", "Erika Beispiel, Musterweg 1\nMit Schreiben vom 09.06.2026 widerrufe ich den Dauerauftrag.", id="E03"),
+    pytest.param(H + "das Schreiben des Kreises liegt bei.\n", "Landkreis Musterkreis\nMit Bescheid vom 09.06.2026 ordnen wir die Untersuchung an.", id="E04"),
+    pytest.param(H + "wir erinnern an die Zahlung. Kopie:\n", "Stadtkasse Musterstadt\nMit Bescheid vom 09.06.2026 erteilen wir Ihnen die Sondernutzungserlaubnis gegen 50,00 EUR.", id="E05"),
+    pytest.param(H + "der vorläufige Bescheid ist beigefügt; er wird nun endgültig.\n", "Jobcenter Musterstadt\nMit Bescheid vom 09.06.2026 bewillige ich vorläufig Leistungen.", id="E06"),
+    pytest.param(H + "die Stundungsverfügung liegt bei.\n", "Finanzamt Musterstadt\nMit Bescheid vom 09.06.2026 stunde ich die Steuer bis 30.09.2026.", id="E07"),
+    pytest.param(H + "zum Vergleich der frühere Bescheid:\n", "Stadt Musterstadt\nMit Bescheid vom 09.06.2026 erhöhe ich den Beitrag auf 90,00 EUR.", id="E08"),
+    pytest.param(F + G + "hiermit heben wir den Bescheid vom 02.03.2026 auf.\n\nAnlage: Kopie des Bescheids\n", "Mit Bescheid vom 02.03.2026 erteilen wir Ihnen die Erlaubnis.\n", id="fresh-P1"),
+]  # fmt: skip
+
+
+def test_the_form_at_a_place_where_it_does_not_open_does_not_count() -> None:
+    def check(page: str) -> None:
+        found = re.search(
+            r"(?:Bescheid|Schreiben) vom (\d{2})\.(\d{2})\.(\d{4})\s+[^\W\d_]+ (?:wir|ich)\b", page
+        )
+        assert found is not None
+        day, month, year = (int(part) for part in found.groups())
+        _assert_not_in(date(year, month, day), _page_dates(page))
+
+    check_rows(PLACES_THAT_DO_NOT_COUNT, check, at_least=70)
+
+
+def test_a_later_sheet_is_not_read_for_the_decisions_own_date() -> None:
+    """Each enclosure, as a second page and after a form feed on the first, gives no date of its own; the same words as
+    the letter's own first sheet do (so the sheet, not the words, decides)."""
+
+    def check(letter: str, enclosure: str) -> None:
+        other = date(2026, 6, 9) if "09.06.2026" in enclosure else date(2026, 3, 2)
+        _assert_not_in(other, _page_dates(letter, enclosure))
+        _assert_not_in(other, _page_dates(f"{letter}\f{enclosure}"))
+        _assert_in(other, _page_dates(f"{F}{G}{enclosure.splitlines()[-1]}"))
+
+    check_rows(ANOTHER_SHEET, check)
+
+
+def test_a_line_above_that_is_no_field_does_not_open_the_form() -> None:
+    """In lower case under the salutation's line the form opens only under a header's "Datum:" field or a table's row
+    of one word and a date; never after words of its own sentence on the line above, a sentence broken right after a
+    date or a number among them."""
     for above, sentence in (
         ("Nach Anhörung\n", "mit Schreiben vom 09.06.2026 setzen wir die Gebühr fest."),
         ("Anders als\n", "mit Bescheid vom 09.06.2026 setzen wir die Gebühr fest."),
+        ("Gebührenbescheid\n", "Mit Bescheid vom 09.06.2026 setzen wir die Gebühr fest."),
         # a sentence the text layer broke right after a date or a number (the reviews' rows)
         (
             "Ihren Widerspruch gegen den Bescheid vom 02.06.2026\n",
@@ -1576,6 +1789,57 @@ def test_an_unlisted_word_in_any_place_of_the_form_refuses_it() -> None:
     check_rows(cases, check)
 
 
+#: What may stand right before a counted row (``{}`` is the row, with its first letter as given) and does not open the
+#: form: a line of capitalised nouns that ends in a number, labels of another kind, a line ending in ":", headings,
+#: lists' marks, an abbreviation's full stop, ";", another sheet (a second page, or a form feed on the first), a label of
+#: another kind with a date, and a lower-case "mit" after a sentence's end.
+FIXED_LEADS = (
+    G + "Ihren Widerspruch Az. 32-117/2026\n{lower}", G + "Die Erlaubnis Nr. 4711\n{lower}", G + "Anlage 2\n{lower}",
+    G + "Bescheid 2026\n{lower}", G + "Die Abwassergebühr 2025\n{upper}", G + "Kassenzeichen: 600123\n{lower}",
+    G + "Betreff: Ihr Widerspruch gegen den Bescheid Nr. 12\n{lower}", G + "Sie schrieben uns:\n{upper}",
+    G + "Das Landratsamt Musterkreis teilte mit:\n{lower}", G + "Sachverhalt\n{upper}", G + "Gebührenbescheid\n{upper}",
+    G + "Bisheriger Bescheid\n{upper}", G + "1. {upper}", G + "I. {upper}", G + "a) {upper}", G + "• {upper}",
+    G + "- {upper}", G + "Zum Verlauf:\n2. {upper}", G + "Ihr Zeichen Az. {upper}", G + "Ihr Antrag liegt vor; {upper}",
+    G + "anbei die Kopie.\f{upper}", G + "anbei die Kopie.\fLandratsamt Musterkreis\n{upper}",
+    G + "Eingang: 01.06.2026\n{lower}", G + "Das ist bestandskräftig.\n{lower}", G + "Das ist bestandskräftig. {lower}",
+)  # fmt: skip
+#: The same with a word of no listed place (``{word}``): between the salutation's comma and "mit", alone on the line
+#: above, as a label above, and as a noun with a number above.
+WORD_LEADS = (
+    "Sehr geehrte Frau Beispiel, {word}, {lower}", "Sehr geehrte Frau Beispiel, {word},\n{lower}",
+    G + "{word}\n{upper}", G + "{word}:\n{upper}", G + "{word} 4711\n{lower}", G + "Ihr {word} Nr. 4711\n{lower}",
+)  # fmt: skip
+
+
+def test_no_lead_but_the_named_places_opens_the_form() -> None:
+    """For every counted row, with "wir" and with "ich": a fixed lead of each kind the form must not open after, every
+    unlisted word in each lead slot, the verb moved to the next line, and the row on a second page, give no date of
+    the letter's own. The places that do open it are PLACES_THAT_COUNT."""
+    cases = []
+    for row in FORMS_THAT_COUNT:
+        for speaker, marked in (("", row.values[0]), ("-ich", _as_ich(row.values[0]))):
+            upper = marked.replace("|", "")
+            upper = upper[0].upper() + upper[1:]
+            lower = upper[0].lower() + upper[1:]
+            pages = [F + lead.format(upper=upper, lower=lower) for lead in FIXED_LEADS]
+            pages += [
+                F + lead.format(word=word, upper=upper, lower=lower)
+                for lead in WORD_LEADS
+                for word in UNLISTED_WORDS
+            ]
+            pages.append(F + G + re.sub(r"(\d{4}) ", r"\1\n", upper, count=1))
+            cases += [pytest.param(page, id=f"{row.id}{speaker}:{index}") for index, page in enumerate(pages)]
+            cases.append(
+                pytest.param(F + G + "anbei die Kopie.\n", F + upper, id=f"{row.id}{speaker}:second-page")
+            )
+    assert len(cases) > 7000
+
+    def check(*pages: str) -> None:
+        _assert_not_in(date(2026, 6, 9), _page_dates(*pages))
+
+    check_rows(cases, check)
+
+
 #: Sentences that name the letter's own decision but fall outside the one form, so do not count (recall given up on
 #: purpose: precision comes first). The letter's header date still counts for them. The passive, "ergeht", "erhalten
 #: Sie", "Der Bescheid vom … ergeht", the verb before "mit" and English read the same when a letter tells of an
@@ -1621,11 +1885,105 @@ OWN_BUT_OUTSIDE_THE_FORMS = [
     pytest.param(
         "Gemäß § 35 VwVfG setzen wir mit Bescheid vom 09.06.2026 die Gebühr fest.", id="after-a-statute"
     ),
+    # each speaker with its own verb form only
+    pytest.param("Mit Bescheid vom 09.06.2026 setze wir die Gebühr fest.", id="setze-wir"),
+    pytest.param("Mit Bescheid vom 09.06.2026 setzen ich die Gebühr fest.", id="setzen-ich"),
+    # places the form does not open at, so its own date is given up there too (the line above or the opening decide)
+    pytest.param(
+        "Gebührenbescheid Hundesteuer\nMit Bescheid vom 09.06.2026 ändere ich die Festsetzung.",
+        id="under-a-heading",
+    ),
+    pytest.param(
+        "Vorauszahlungen 2026   48,00\nmit Bescheid vom 09.06.2026 erhöhen wir den Betrag.",
+        id="under-a-row-ending-in-an-amount",
+    ),
+    pytest.param(
+        "Kassenzeichen: 600123\nmit Bescheid vom 09.06.2026 stunde ich die Forderung.",
+        id="under-another-label",
+    ),
+    pytest.param(
+        "Wir entscheiden:\n1. Mit Bescheid vom 09.06.2026 setzen wir die Gebühr fest.",
+        id="after-a-lists-mark",
+    ),
+    pytest.param("Mit Bescheid vom 09.06.2026\nsetzen wir die Gebühr fest.", id="the-verb-on-the-next-line"),
+    pytest.param(
+        "Wir entscheiden wie folgt:\nMit Bescheid vom 09.06.2026 untersage ich die Nutzung.",
+        id="under-a-colon",
+    ),
+    pytest.param(
+        "Ihr Antrag liegt uns vor. Mit Bescheid vom 09.06.2026 lehnen wir ihn ab.",
+        id="after-a-sentence-ending-in-a-short-word",
+    ),
 ]
 
 
 def test_an_own_decision_outside_the_forms_does_not_count() -> None:
     check_rows(OWN_BUT_OUTSIDE_THE_FORMS, lambda sentence: _assert_equal(_own_dates(sentence), []))
+
+
+#: The form's known limit, pinned so that a change to it is seen. A sentence that tells of another decision in the
+#: form itself (first person, present tense, a listed verb right after the date, at a place where the form opens)
+#: counts: the check does not read past the speaker. Main's form counts the same sentences with its own verbs ("Mit
+#: Bescheid vom … fordern wir 80,00 EUR, die bis heute nicht bezahlt sind"). It costs some days on the early side,
+#: with "Please check" (the earlier of two dates within 14 days is kept), which is the safe side; a letter that names
+#: two dates for itself and is not seen would cost days on the late side, unflagged. Each row's 09.06.2026 (09.03.2026)
+#: is another decision's, and it counts. The last row is the table row's place, which main's own test needs.
+KNOWN_LIMIT = [
+    pytest.param(
+        G + "Mit Schreiben vom 09.03.2026 teilen wir, die Erben, Ihnen mit, so Ihr Anwalt.", id="I5"
+    ),
+    pytest.param(
+        G
+        + "Mit Bescheid vom 09.03.2026 fordern wir 80,00 EUR, die bis heute nicht bezahlt sind. Wir mahnen hiermit.",
+        id="J1",
+    ),
+    pytest.param(
+        G + "Mit Bescheid vom 09.03.2026 setzen wir eine Gebühr fest, die Sie bisher nicht gezahlt haben.",
+        id="J2",
+    ),
+    pytest.param(
+        H
+        + "wir fassen zusammen. Mit Bescheid vom 09.06.2026 widerrufen wir die Erlaubnis; dieser Bescheid ist "
+        "bestandskräftig.",
+        id="P01",
+    ),
+    pytest.param(
+        H + "Mit Bescheid vom 09.06.2026 stunden wir die Steuer bis zum 30.09.2026. Die Raten sind fällig.",
+        id="P15",
+    ),
+    pytest.param(
+        H + "Mit Schreiben vom 09.06.2026 fordere ich Sie zur Zahlung auf. Heute mahne ich die Zahlung an.",
+        id="I04",
+    ),
+    pytest.param(
+        H
+        + "Mit Bescheid vom 09.06.2026 bewillige ich vorläufig Leistungen. Nun setze ich sie endgültig fest.",
+        id="I05",
+    ),
+    pytest.param(
+        "Stadt Musterstadt\nDatum: 16.06.2026\nSehr geehrter Herr Muster,\nmit Bescheid vom 09.06.2026 widerrufen wir "
+        "die Erlaubnis; heute setzen wir die Kosten fest.",
+        id="S06",
+    ),
+    pytest.param(H + "Mit dem Schreiben vom 09.06.2026 nehme ich Stellung, schrieben Sie uns.", id="M09"),
+    pytest.param(
+        N + "Mit Bescheid vom 09.06.2026 ändere ich, mit Bescheid vom 16.06.2026 setze ich fest.", id="C05"
+    ),
+    pytest.param(
+        N + "Mit Bescheid vom 09.06.2026 widerrufe ich. Mit Bescheid vom 16.06.2026 erteile ich.", id="C19"
+    ),
+    pytest.param(N + "Bescheid 09.06.2026\nmit Bescheid vom 09.06.2026 heben wir", id="C21"),
+]
+
+
+def test_the_forms_known_limit_counts_as_documented() -> None:
+    def check(page: str) -> None:
+        found = re.search(r"vom (\d{2})\.(\d{2})\.(\d{4}) [^\W\d_]+ (?:wir|ich)\b", page)
+        assert found is not None
+        day, month, year = (int(part) for part in found.groups())
+        _assert_in(date(year, month, day), _page_dates(f"{F}{page}" if page.startswith(G) else page))
+
+    check_rows(KNOWN_LIMIT, check)
 
 
 def _assert_equal(found: object, expected: object) -> None:
@@ -2126,9 +2484,9 @@ MORE_EARLIER_DECISIONS = [
 #: authority (F), a line broken after a number (G), a heading (H), the person's letter, an invoice or an enclosure
 #: (I), reminders and enforcement (J), a correction or revocation (K), a provisional decision made final (L),
 #: another authority after the verb (M), and its rows built from listed words only (Z); then the contract review's own (a quote, a line broken after a
-#: date, a heading). None may count. Its three
-#: rows in the first person and the present tense with one of main's verbs ("Mit Bescheid vom … fordern wir 80,00
-#: EUR, die bis heute nicht bezahlt sind") count on main as here: the one form does not read past its speaker.
+#: date, a heading, and its refused sentences verbatim). None may count. Its three rows in the first person and the
+#: present tense with one of main's verbs (I5, J1, J2) count on main as here: they are the form's known limit
+#: (KNOWN_LIMIT).
 THE_CLOSED_ATTACKS_FALSE_RIVALS = [
     pytest.param(
         "Mit Bescheid vom 09.03.2026 erhalten Sie seit dem 01.01.2026 Wohngeld in Höhe von 210,00 EUR monatlich.",
@@ -2423,6 +2781,15 @@ THE_CLOSED_ATTACKS_FALSE_RIVALS = [
         "Vorgang 2026/17   01.06.2026\nmit Bescheid vom 01.06.2026 wird dieser Vorgang ersetzt.",
         id="quoted-or-wrapped-15",
     ),
+    # the contract review's refused sentences, verbatim
+    pytest.param("Die Gebühr wird mit Bescheid vom 01.06.2026 aufgehoben.", id="contract-8"),
+    pytest.param("Ihnen wird mit Bescheid vom 01.06.2026 die Erlaubnis erteilt.", id="contract-9"),
+    pytest.param("Die Erlaubnis wird nunmehr mit Bescheid vom 01.06.2026 aufgehoben.", id="contract-10"),
+    pytest.param("By notice dated 1 June 2026 we revoke the decision dated 3 June 2026.", id="contract-11"),
+    pytest.param("Hereby, with the notice of 1 June 2026, we confirm the fee.", id="contract-12"),
+    pytest.param("With the notice of 1 June 2026, the fees are hereby assessed.", id="contract-13"),
+    pytest.param("Mit Bescheid vom 01.06.2026 (Az. 3-4) wird nichts geändert.", id="contract-16"),
+    pytest.param("Mit Bescheid vom 01.06.2026 werden.", id="contract-17"),
 ]
 
 
