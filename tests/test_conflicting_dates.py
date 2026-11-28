@@ -1414,6 +1414,9 @@ A_DECISION_NAMING_ITS_OWN_DATE = [
     pytest.param("By our decision dated 9 June 2026, we hereby set the fee at EUR 80.00.", id="en-hereby"),
     pytest.param("By decision dated 9 June 2026 we refuse your application.", id="en-present"),
     pytest.param("With the notice dated 9 June 2026 the fee is hereby set at EUR 80.00.", id="en-passive"),
+    pytest.param(
+        "Mit Bescheid vom 09.06.2026, Az. 32-117/2026, wird die Gebühr festgesetzt.", id="file-number-aside"
+    ),
 ]
 
 
@@ -1487,6 +1490,22 @@ ANOTHER_DECISIONS_DATE = [
     ),
     pytest.param("Mit Schreiben vom 09.06.2026 beantragen Sie Wohngeld.", id="the-persons-application"),
     pytest.param("Mit unserem Bescheid vom 09.06.2026 setzen wir die Steuer fest.", id="unserem"),
+    pytest.param(
+        "Die Gebühr, festgesetzt mit Bescheid vom 09.06.2026, wird auf 50,00 EUR ermäßigt.",
+        id="participle-between-commas",
+    ),
+    pytest.param(
+        "Der Betrag, zuletzt geändert mit Bescheid vom 09.06.2026, wird erneut angepasst.",
+        id="adverb-participle-between-commas",
+    ),
+    pytest.param(
+        "Der Widerspruch, eingelegt mit Schreiben vom 09.06.2026, wird zurückgewiesen.",
+        id="the-persons-letter-between-commas",
+    ),
+    pytest.param(
+        "Der Betrag, zuletzt geändert mit Bescheid vom 09.06.2026 wird erneut angepasst.",
+        id="participle-phrase-its-closing-comma-lost",
+    ),
     pytest.param("By our decision dated 9 June 2026 we granted the benefit.", id="en-past"),
     pytest.param("Our decision of 9 June 2026 is hereby revoked.", id="en-revoked"),
     pytest.param(

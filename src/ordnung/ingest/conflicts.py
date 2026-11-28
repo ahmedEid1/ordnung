@@ -274,14 +274,19 @@ _OWN_DECISION_BEFORE = re.compile(
     r"|(?P<issued>\bder\s+\w*bescheid\s+vom))\s*$",
     re.IGNORECASE,
 )
+#: A file number or a bracket between the date and its verb ("Mit Bescheid vom …, Az. 12-34/2026, wird …", "…
+#: (Kassenzeichen 4711) wird …"): only these stand there, set off by commas or brackets.
+_ASIDE = r"(?:\s*,\s*(?:az|gz|aktenzeichen|geschäftszeichen|kassenzeichen)\b[^,]*,|\s*\([^)]*\))"
 #: The finite verb right after that date, in the present tense: the decision this letter makes ("Mit Bescheid
 #: vom 16.03.2026 setzen wir …", "… wird die Gebühr … festgesetzt", "… werden Sie gebeten", "… ergeht
 #: folgende Entscheidung", "… erhalten Sie", "By decision dated …, we hereby …", "… the fee is hereby set").
 #: A past or perfect form ("wurde", "hatten wir", "haben wir … festgesetzt", "ist … worden", "we granted") names
-#: an earlier decision and is not here.
+#: an earlier decision and is not here. In German the verb follows the date directly (or after a file number):
+#: after a comma it is the main clause's verb, and the date belongs to a phrase set off by commas ("Die Gebühr,
+#: festgesetzt mit Bescheid vom …, wird ermäßigt": an earlier decision's). English sets a comma there anyway.
 _OWN_DECISION_AFTER = re.compile(
-    rf"^\s*,?\s*(?:{_PRESENT}|wird|werden|ergeh(?:t|en)|erhalten\s+sie"
-    r"|we\s+(?:hereby\s+\w+|assess|refuse|reject|grant|approve|decide|determine|demand|order|revoke|amend"
+    rf"^{_ASIDE}?\s*(?:{_PRESENT}|wird|werden|ergeh(?:t|en)|erhalten\s+sie)\b"
+    r"|^\s*,?\s*(?:we\s+(?:hereby\s+\w+|assess|refuse|reject|grant|approve|decide|determine|demand|order|revoke|amend"
     r"|confirm|inform|notify|ask|request|impose|levy|award|withdraw|fix)"
     r"|(?:(?!which\b|that\b)\w+\s+){1,4}?(?:is|are)\s+hereby)\b",
     re.IGNORECASE,
@@ -300,6 +305,10 @@ _NOT_OWN_LEAD = re.compile(
     r"|verglichen|übereinstimmung|the|as|already|previously|which|that|together|along)\s*$",
     re.IGNORECASE,
 )
+#: The words before "mit" after a comma, with no finite verb, ending in a participle ("Der Betrag, zuletzt
+#: geändert mit Bescheid vom …"): a phrase set off by commas that names an earlier decision, also when the scan
+#: lost the comma after its date.
+_INSERTED_PHRASE = re.compile(r",\s*(?:[a-zäöüß]\w*\s+)*?[a-zäöüß]\w*(?:t|en)\s*$")
 #: Words of an earlier time or a reference between the verb and "mit Bescheid vom …" ("Der Betrag wird nach
 #: Bezugnahme auf …", "… wird unter Hinweis auf …"), or a past auxiliary: not this letter's decision.
 _EARLIER = re.compile(
@@ -692,6 +701,8 @@ def _own_decision(before: str, after: str) -> re.Match[str] | None:
         return None
     lead = re.split(r"[,;:]", before[: cue.start()])[-1]  # the clause's words before "mit"
     if _NOT_OWN_LEAD.search(lead):
+        return None
+    if _INSERTED_PHRASE.search(before[: cue.start()]) and not _FINITE_BEFORE.search(lead):
         return None
     if cue.group("issued"):
         return cue if _ISSUED_AFTER.match(after) else None
