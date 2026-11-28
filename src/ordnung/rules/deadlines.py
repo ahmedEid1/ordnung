@@ -329,9 +329,10 @@ class PostingStatement:
     differ), ``None`` when they state none; ``quote`` the sentence or field it was read from; ``grounding`` how the
     page it stands on was read (a text layer: ``verified``; an AI transcript of a photo: ``model_read``).
     ``other``: a second, later posting day the pages also state for this letter, with its ``other_quote`` — the
-    letter contradicts itself. ``formal``: the pages say the letter is served under the VwZG with a proof of its
-    receipt ("Einschreiben mit Rückschein", "gegen Empfangsbekenntnis", § 5 VwZG): its period runs from that
-    receipt (§ 4 Abs. 2 S. 1, § 5 Abs. 4 VwZG), so no posting day starts it."""
+    letter contradicts itself. ``formal``: the pages say the letter is served formally (by Postzustellungsurkunde,
+    "Einschreiben mit Rückschein", "gegen Empfangsbekenntnis", under § 3 or § 5 VwZG, the ZPO's service sections or
+    a Land's service law): its period runs from that service (§ 3 VwZG with §§ 177 ff. ZPO, § 4 Abs. 2 S. 1, § 5
+    Abs. 4 VwZG), so no posting day starts it."""
 
     day: date | None = None
     quote: str = ""

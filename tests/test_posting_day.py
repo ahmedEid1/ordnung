@@ -37,8 +37,60 @@ HEADER = (
 )
 
 
+#: The salutation that ends the letterhead, and the body's first sentence.
+SALUTATION = "\nSehr geehrte Frau Beispiel,\nhiermit setzen wir die Steuer fest.\n"
+#: The remedy notice that ends the letter.
+REMEDY = "\nGegen diesen Bescheid ist der Einspruch gegeben."
+
+
 def found(text: str, source: str = "text") -> PostingStatement | None:
     return posting_statement([(1, text, [], source)], LETTER)
+
+
+def head(top: str) -> str:
+    """A made-up letter with ``top`` in its letterhead: under the header's date line, above the salutation."""
+    return f"{HEADER}{top}{SALUTATION}{REMEDY}"
+
+
+def body(text: str) -> str:
+    """A made-up letter with ``text`` in its body: after the salutation, before the remedy notice."""
+    return f"{HEADER}{SALUTATION}{text}{REMEDY}"
+
+
+def everywhere(text: str, *, heading: bool = True) -> Iterator[str]:
+    """``text`` as a page of its own, in a letter's letterhead, in its body, and (``heading``) in its body under a
+    notice's heading, the one place a sentence form counts."""
+    yield text
+    yield head(text)
+    yield body(text)
+    if heading:
+        yield body(f"Hinweis: {text}")
+
+
+def under_a_heading(sentence: str) -> str:
+    """A made-up letter whose body ends with a notice's heading and ``sentence``."""
+    return f"{HEADER}{SALUTATION}Hinweis: {sentence}\n"
+
+
+def due(page: str, *, scope: str = "ao", region: str = "NW") -> str | None:
+    """The objection deadline the engine gives for the made-up letter of Fri 16 Oct 2026 whose only page is
+    ``page``: from the letter's date Fri 20 Nov (AO, NW) — a posting day the page states moves it."""
+    spec = DateSpec(
+        type="relative",
+        anchor="deemed_delivery",
+        amount=1,
+        unit="months",
+        delivery_rule="de_admin_post",
+        nature="objection",
+    )
+    context = RuleContext(
+        today=D("2026-10-27"),
+        region=region,
+        document_date=LETTER,
+        delivery_scope=scope,
+        posting=posting_statement([(1, page, [], "text")], LETTER),
+    )
+    return compute_due(spec, context).due_date
 
 
 def _box(text: str, x0: float, y0: float) -> list[Any]:
@@ -56,48 +108,49 @@ def _row(y: float, *cells: tuple[float, str]) -> list[list[Any]]:
     return boxes
 
 
-#: (id, page text, the posting day it states). Each a way an authority writes it.
+#: (id, page text, the posting day it states). Each a way an authority writes it: a field in the letterhead, a
+#: sentence under a notice's heading.
 CUES = [
-    (
-        "field-in-the-header",
-        f"{HEADER}Tag der Aufgabe zur Post: 19.10.2026\n\nSehr geehrte Frau Beispiel,",
-        "2026-10-19",
-    ),
-    ("field-datum-der-aufgabe", "Datum der Aufgabe zur Post: Montag, 19. Oktober 2026", "2026-10-19"),
-    ("field-under-its-label", "Tag der Aufgabe zur Post\n19.10.2026\n", "2026-10-19"),
-    ("field-without-a-colon", "Tag der Aufgabe zur Post 19.10.2026", "2026-10-19"),
-    ("field-absendedatum", "Absendedatum: 19.10.2026", "2026-10-19"),
-    ("field-versandt-am", "Grundbesitzabgaben 2026\nVersandt am: 19.10.2026", "2026-10-19"),
-    ("field-tag-der-absendung", "Tag der Absendung: 19.10.2026", "2026-10-19"),
-    ("field-datum-des-versands", "Datum des Versands: 19.10.2026", "2026-10-19"),
-    ("field-short-weekday", "Tag der Aufgabe zur Post: Mo., 19.10.2026", "2026-10-19"),
-    ("field-ist-der", "Tag der Aufgabe zur Post ist der 19.10.2026.", "2026-10-19"),
-    ("field-statute-s-note", "Aufgabe zur Post am Montag, den 19.10.2026", "2026-10-19"),
+    ("field-in-the-header", head("Tag der Aufgabe zur Post: 19.10.2026\n"), "2026-10-19"),
+    ("field-datum-der-aufgabe", head("Datum der Aufgabe zur Post: Montag, 19. Oktober 2026"), "2026-10-19"),
+    ("field-under-its-label", head("Tag der Aufgabe zur Post\n19.10.2026\n"), "2026-10-19"),
+    ("field-without-a-colon", head("Tag der Aufgabe zur Post 19.10.2026"), "2026-10-19"),
+    ("field-absendedatum", head("Absendedatum: 19.10.2026"), "2026-10-19"),
+    ("field-versandt-am", head("Grundbesitzabgaben 2026\nVersandt am: 19.10.2026"), "2026-10-19"),
+    ("field-tag-der-absendung", head("Tag der Absendung: 19.10.2026"), "2026-10-19"),
+    ("field-datum-des-versands", head("Datum des Versands: 19.10.2026"), "2026-10-19"),
+    ("field-short-weekday", head("Tag der Aufgabe zur Post: Mo., 19.10.2026"), "2026-10-19"),
+    ("field-ist-der", head("Tag der Aufgabe zur Post ist der 19.10.2026."), "2026-10-19"),
+    ("field-statute-s-note", head("Aufgabe zur Post am Montag, den 19.10.2026"), "2026-10-19"),
+    ("field-zur-post-gegeben-am", head("Zur Post gegeben am 19.10.2026."), "2026-10-19"),
+    # the letterhead's lines above may be any closed field: empty, a number, a colon, a full stop
+    ("field-after-a-blank-line", head("\nTag der Aufgabe zur Post: 19.10.2026"), "2026-10-19"),
+    ("field-after-a-number", head("Steuernummer 123/456/78901\nVersanddatum: 19.10.2026"), "2026-10-19"),
+    ("field-after-a-colon", head("Bearbeitungsstand:\nVersanddatum: 19.10.2026"), "2026-10-19"),
+    ("field-after-a-full-stop", head("Zimmer 4.\nVersanddatum: 19.10.2026"), "2026-10-19"),
     (
         "sentence-zur-post-gegeben",
-        "Sehr geehrter Herr Muster,\nDieser Bescheid wurde am 19.10.2026 zur Post gegeben. Er ergeht unter Vorbehalt.",
+        body("Hinweis: Dieser Bescheid wurde am 19.10.2026 zur Post gegeben. Er ergeht unter Vorbehalt."),
         "2026-10-19",
     ),
     (
         "sentence-zur-post-gegeben-worden",
-        "Der Bescheid ist am Montag, den 19.10.2026 zur Post gegeben worden.",
+        body("Hinweis: Dieser Bescheid ist am Montag, den 19.10.2026 zur Post gegeben worden."),
         "2026-10-19",
     ),
-    ("sentence-wrapped", "Dieser Bescheid wurde am 19.10.2026 zur\nPost gegeben.", "2026-10-19"),
-    ("sentence-aufgabe-am", "Die Aufgabe zur Post erfolgte am 19.10.2026.", "2026-10-19"),
+    (
+        "sentence-wrapped",
+        body("Hinweis: Dieser Bescheid wurde am 19.10.2026 zur\nPost gegeben."),
+        "2026-10-19",
+    ),
     (
         "sentence-der-post-uebergeben",
-        "Dieses Schreiben wurde am 19.10.2026 der Post übergeben.",
+        body("Hinweis: Dieses Schreiben wurde am 19.10.2026 der Post übergeben."),
         "2026-10-19",
     ),
-    ("sentence-versandt-this-letter", "Dieser Bescheid wurde am 19.10.2026 versandt.", "2026-10-19"),
-    # plainly "Der Bescheid … versandt": the letter's own record of its sending, in the past tense; no channel's word
-    # ("per E-Mail") and no other decision's ("vom …", "für 2024") may stand in it
-    ("sentence-der-bescheid-versandt", "Der Bescheid wurde am 19.10.2026 versandt.", "2026-10-19"),
-    # a notice's heading before the sentence
     (
-        "sentence-after-a-heading",
-        "Hinweis: Dieser Bescheid wurde am 19.10.2026 zur Post gegeben.",
+        "sentence-versandt-this-letter",
+        body("Hinweis: Dieser Bescheid wurde am 19.10.2026 versandt."),
         "2026-10-19",
     ),
     (
@@ -105,32 +158,35 @@ CUES = [
         f"{HEADER}Hinweis zur Bekanntgabe: Dieser Bescheid wurde am 19.10.2026 zur Post gegeben.",
         "2026-10-19",
     ),
-    ("english-field", "Date of posting: 19 October 2026", "2026-10-19"),
-    ("english-sentence", "This letter was posted on 19 October 2026.", "2026-10-19"),
-    ("field-aufgegeben-zur-post", "Aufgegeben zur Post am 19.10.2026", "2026-10-19"),
-    ("field-datum-des-postausgangs", "Datum des Postausgangs: 19.10.2026", "2026-10-19"),
-    ("field-abgesendet-am", "Abgesendet am 19.10.2026", "2026-10-19"),
-    ("field-absendung-am", "Absendung am 19.10.2026", "2026-10-19"),
+    ("english-field", head("Date of posting: 19 October 2026"), "2026-10-19"),
+    ("english-sentence", body("Hinweis: This letter was posted on 19 October 2026."), "2026-10-19"),
+    ("field-aufgegeben-zur-post", head("Aufgegeben zur Post am 19.10.2026"), "2026-10-19"),
+    ("field-datum-des-postausgangs", head("Datum des Postausgangs: 19.10.2026"), "2026-10-19"),
+    ("field-abgesendet-am", head("Abgesendet am 19.10.2026"), "2026-10-19"),
+    ("field-absendung-am", head("Absendung am 19.10.2026"), "2026-10-19"),
     # a sentence that goes on on the next line after "am": the date is still its own
     (
         "sentence-wrapped-before-the-date",
-        "Dieser Bescheid wurde am\n19.10.2026 zur Post gegeben.",
+        body("Hinweis: Dieser Bescheid wurde am\n19.10.2026 zur Post gegeben."),
         "2026-10-19",
     ),
-    # a letter calls itself plainly "der Bescheid"
-    ("sentence-the-decision", "Der Bescheid wurde am 19.10.2026 zur Post gegeben.", "2026-10-19"),
     (
         "sentence-this-other-kind",
-        "Dieser Widerspruchsbescheid wurde am 19.10.2026 zur Post gegeben.",
+        body("Hinweis: Dieser Widerspruchsbescheid wurde am 19.10.2026 zur Post gegeben."),
         "2026-10-19",
     ),
     # "dem" after a weekday as well as "den"
-    ("sentence-weekday-dem", "Der Bescheid wurde am Montag, dem 19.10.2026 zur Post gegeben.", "2026-10-19"),
-    # plainer field labels, where a cell starts
-    ("field-aufgegeben-am", "Aufgegeben am 19.10.2026", "2026-10-19"),
-    ("field-versand-am", "Grundbesitzabgaben 2026\nVersand am 19.10.2026", "2026-10-19"),
-    ("field-versand-colon", "Versand: 19.10.2026", "2026-10-19"),
-    ("field-absendevermerk", "Absendevermerk: 19.10.2026", "2026-10-19"),
+    (
+        "sentence-weekday-dem",
+        body("Hinweis: Dieser Bescheid wurde am Montag, dem 19.10.2026 zur Post gegeben."),
+        "2026-10-19",
+    ),
+    # plainer field labels, in the letterhead only
+    ("field-aufgegeben-am", head("Aufgegeben am 19.10.2026"), "2026-10-19"),
+    ("field-versand-am", head("Grundbesitzabgaben 2026\nVersand am 19.10.2026"), "2026-10-19"),
+    ("field-versand-colon", head("Versand: 19.10.2026"), "2026-10-19"),
+    ("field-absendevermerk", head("Absendevermerk: 19.10.2026"), "2026-10-19"),
+    ("field-posted", head("Posted: 19 October 2026"), "2026-10-19"),
 ]
 
 
@@ -140,6 +196,8 @@ def test_each_cue_states_the_posting_day() -> None:
         assert statement is not None and statement.day == D(day) and statement.other is None, statement
         assert statement.grounding == "verified" and statement.quote
         assert "Sehr geehrte" not in statement.quote and "Ihr Zeichen" not in statement.quote
+        # and through the engine: counted from Mon 19 Oct (deemed delivery Thu 22 Oct), Mon 23 Nov
+        assert due(text) == "2026-11-23", text
 
     check_rows(CUES, check)
 
@@ -256,7 +314,8 @@ NEVER = [
 
 def test_what_never_counts_as_this_letter_s_posting_day() -> None:
     def check(_id: str, text: str) -> None:
-        assert found(text) == PostingStatement()
+        for page in everywhere(text):
+            assert found(page) == PostingStatement(), page
 
     check_rows(NEVER, check)
 
@@ -636,22 +695,296 @@ REVIEWED = [
     ("two-ways", "Tag der Aufgabe zur Post: 10/11/2026"),
 ]
 
+#: A closed form in a place where the words before it may lead into an example, a supposition or another letter's
+#: story: after another sentence's end, after a line that ends in a date, after the salutation, at the text's start
+#: (the fifth review: each moved a right deadline later, at high confidence). Only a notice's heading starting its
+#: line is a form's place now; each row also with the self-naming subject, so the place refuses it, not its words.
+_PLACES_NEVER = [
+    (
+        "an-example-in-whole-sentences",
+        "Ein Beispiel zur Fristberechnung. {subject} wurde am 20.10.2026 zur Post gegeben. Er gilt dann am "
+        "23.10.2026 als bekannt gegeben.",
+    ),
+    ("a-worked-example-s-heading-line", "Rechenbeispiel.\n{subject} wurde am 21.10.2026 zur Post gegeben."),
+    (
+        "nehmen-wir-an",
+        "Nehmen wir an, Sie erhalten den Bescheid spät. {subject} wurde am 22.10.2026 versandt. Dann beginnt die "
+        "Frist am 26.10.2026.",
+    ),
+    ("angenommen-and-a-semicolon", "Angenommen, es ist so; {subject} wurde am 20.10.2026 zur Post gegeben."),
+    (
+        "so-berechnen-sie",
+        "So berechnen Sie die Frist: Ein Beispiel. {subject} wurde am 21.10.2026 abgesandt.",
+    ),
+    (
+        "a-question-then-its-answer",
+        "Wann beginnt die Frist? {subject} wurde am 20.10.2026 zur Post gegeben. Dann gilt er am 23.10.2026 als "
+        "bekannt gegeben.",
+    ),
+    (
+        "english-for-example",
+        "For example. This letter was posted on 20 October 2026. It then counts as received.",
+    ),
+    ("english-suppose", "Suppose it was late! This notice was mailed on 21 October 2026."),
+    # a lead line that ends in a date (not the letter's header)
+    (
+        "angenommen-a-dated-line",
+        "Angenommen, Sie erhalten einen Bescheid vom 16.10.2026\n{subject} wurde am 19.10.2026 zur Post gegeben.",
+    ),
+    (
+        "an-example-s-dated-line",
+        "Beispiel zu einem Bescheid vom 16.10.2026\n{subject} wurde am 19.10.2026 zur Post gegeben. Dann gilt er am "
+        "22.10.2026 als bekannt gegeben.",
+    ),
+    (
+        "another-person-s-dated-line",
+        "Ihr Ehemann, Herr Max Beispiel, geb. 01.02.1970\n{subject} wurde am 19.10.2026 versandt.",
+    ),
+    (
+        "a-neighbour-s-decision-dated",
+        "Grundsteuerbescheid 2025 Ihres Nachbarn vom 15.10.2026\n{subject} wurde am 19.10.2026 versandt.",
+    ),
+    # after a sentence's end in mid-paragraph
+    (
+        "another-person-s-decision",
+        "Ihr Ehemann erhält einen eigenen Bescheid. {subject} wurde am 19.10.2026 versandt.",
+    ),
+    (
+        "an-example-s-own-date",
+        "Beispiel: Ein Bescheid trägt das Datum 16.10.2026. {subject} wurde am 19.10.2026 zur Post gegeben. Er gilt "
+        "dann am 22.10.2026 als bekannt gegeben.",
+    ),
+    (
+        "an-earlier-application",
+        "So war es auch bei Ihrem Antrag auf Stundung. {subject} wurde am 19.10.2026 abgesandt.",
+    ),
+    # the places the last round still let a form stand
+    ("after-a-sentence", "Die Steuer wird festgesetzt. {subject} wurde am 19.10.2026 zur Post gegeben."),
+    ("after-the-salutation", "Sehr geehrte Frau Beispiel,\n{subject} wurde am 19.10.2026 zur Post gegeben."),
+    ("after-the-header-s-date", f"{HEADER}{{subject}} wurde am 19.10.2026 zur Post gegeben."),
+    ("at-the-text-s-start", "{subject} wurde am 19.10.2026 zur Post gegeben."),
+    # a heading that does not start its line
+    (
+        "a-heading-after-a-sentence-s-end",
+        "Die Steuer ist fällig. Hinweis: {subject} wurde am 19.10.2026 zur Post gegeben.",
+    ),
+    ("a-heading-after-other-words", "Beispiel Hinweis: {subject} wurde am 19.10.2026 zur Post gegeben."),
+]
+PLACES_NEVER = [
+    (f"{name}-{key}", text.replace("{subject}", subject))
+    for name, text in _PLACES_NEVER
+    for key, subject in (("der", "Der Bescheid"), ("dieser", "Dieser Bescheid"))
+]
+#: The rows about a form's place, which a heading put before them would make a form's own place.
+PLACES = {name for name, _ in PLACES_NEVER}
 
-def test_reviewed_wordings_never_count_as_this_letter_s_posting_day() -> None:
-    """Every false find of the reviews, and every wording that no longer counts: refused by the closed forms."""
+#: Records that name no letter or another one (the fifth review: closed forms built from listed words only). The
+#: subject must name THIS letter ("Dieser" / "Dieses" / "This"); plain "Der" / "Das" and the subjectless forms no
+#: longer count anywhere.
+THIS_LETTER_ONLY = [
+    ("der-brief", "Hinweis: Der Brief wurde am 20.10.2026 versandt."),
+    ("das-schreiben", "Hinweis: Das Schreiben wurde am 20.10.2026 abgesandt."),
+    ("der-bescheid-ist-worden", "Hinweis: Der Bescheid ist am 20.10.2026 versandt worden."),
+    ("die-aufgabe-erfolgte", "Hinweis: Die Aufgabe zur Post erfolgte am 20.10.2026."),
+    ("die-aufgabe-ist-erfolgt", "Hinweis: Die Aufgabe zur Post ist am 20.10.2026 erfolgt."),
+    ("zur-post-gegeben-a-note", "Hinweis: Zur Post gegeben am 20.10.2026."),
+    ("the-reader-s-letter", "Wir haben Ihr Schreiben erhalten. Das Schreiben wurde am 20.10.2026 abgesandt."),
+    (
+        "a-copy-for-the-adviser",
+        "Eine Kopie erhält Ihr Steuerberater. Der Brief wurde am 21.10.2026 versandt.",
+    ),
+    ("the-reader-s-own-letter", "Hinweis: Ihr Brief wurde am 20.10.2026 versandt."),
+    ("a-delivery", "Hinweis: Dieser Bescheid wurde am 20.10.2026 zugestellt."),
+    ("an-application", "Hinweis: Der Antrag wurde am 20.10.2026 versandt."),
+    ("a-deadline-weekday", "Hinweis: Dieser Bescheid wurde am spätestens 20.10.2026 versandt."),
+    ("a-bound", "Hinweis: Dieser Bescheid wurde bis 20.10.2026 versandt."),
+    ("a-future", "Hinweis: Dieser Bescheid wird am 20.10.2026 versandt."),
+    ("english-delivered", "Hinweis: This letter was delivered on 20 October 2026."),
+    ("another-determiner", "Hinweis: Jener Bescheid wurde am 20.10.2026 versandt."),
+    ("without-am", "Hinweis: Dieser Bescheid wurde 20.10.2026 zur Post gegeben."),
+    ("a-date-that-reads-two-ways", "Hinweis: Dieser Bescheid wurde am 03/05/2026 zur Post gegeben."),
+    ("two-dates", "Hinweis: Dieser Bescheid wurde am 19.10.2026 und am 20.10.2026 zur Post gegeben."),
+]
+
+#: A field outside the first page's letterhead: in the body or the remedy notice, after the salutation — a worked
+#: example, a date to post by, a plan, another document's record (the fifth review: each moved a right deadline
+#: later). In the letterhead, a field is this letter's own; in the body it never counts, whatever the line above.
+BODY_FIELDS = [
+    ("an-example", "Beispiel:\nTag der Aufgabe zur Post: 20.10.2026\nBekanntgabetag: 23.10.2026"),
+    ("so-rechnen-sie", "So rechnen Sie:\nZur Post gegeben am 21.10.2026"),
+    ("angenommen", "Angenommen:\nVersanddatum: 22.10.2026"),
+    ("an-english-example", "Example:\nDate of posting: 20 October 2026"),
+    ("a-date-to-post-by", "Rücksendung bis spätestens\nAbsendedatum: 22.10.2026"),
+    ("a-reply-s-deadline", "Frist für Ihre Antwort\nAbsendedatum: 22.10.2026"),
+    ("an-english-date-to-post-by", "Please return the form by\nPosting date: 22 October 2026"),
+    ("a-planned-second-copy", "Die Zweitausfertigung soll Ihnen zugehen am\nVersanddatum: 22.10.2026"),
+    ("an-english-plan", "We will send the decision again.\nPosting date: 22 October 2026"),
+    ("a-copy-s-recipient", "Nachrichtlich:\nSteuerberatung Muster GmbH, Musterstadt\nVersandt am 21.10.2026"),
+    ("a-reminder-s-level", "Mahnstufe 1\nVersandt am: 21.10.2026"),
+    (
+        "another-year-s-decision-two-lines-above",
+        "Bescheid für 2024\nSteuernummer 123/456/78901\nTag der Aufgabe zur Post: 21.10.2026",
+    ),
+    ("by-e-mail", "Per E-Mail\nVersandt am 21.10.2026"),
+    ("in-the-tax-portal", "Bereitgestellt im Postfach (ELSTER)\nVersandt am: 21.10.2026"),
+    ("by-fax", "Telefax an 01234-5678\nAbgesendet am 21.10.2026"),
+    ("a-transfer", "Überweisung\nAbgesendet am: 21.10.2026"),
+    ("a-small-ad", "Kleinanzeige Nr. 4711\nAufgegeben am 21.10.2026"),
+    ("a-newsletter", "Newsletter\nVersendet am 21.10.2026"),
+    ("a-label-alone", "Tag der Aufgabe zur Post:\n21.10.2026"),
+]
+
+#: A posting label that starts a wrapped line of prose (the line above runs on into it) or that a lower-case word
+#: starts: never a field, in the letterhead as in the body (the fifth review: each moved a right deadline later).
+WRAPPED = [
+    (
+        "a-supposition-wrapped-before-the-label",
+        "Bitte beachten Sie: Ihr Einspruch ist nur dann rechtzeitig, wenn er bei\nAufgabe zur Post am 21.10.2026.",
+    ),
+    ("a-form-s-dispatch", "Das Formular, das Sie angefordert hatten, wurde\nversandt am 21.10.2026."),
+    ("a-licence-s-dispatch", "Ihr neuer Führerschein wurde von der Bundesdruckerei\nversandt am 21.10.2026."),
+    ("the-reader-s-objection", "Ihren Widerspruch haben Sie nach Ihren Angaben\naufgegeben am 21.10.2026."),
+    ("by-the-postmark", "Ihr Einspruch wurde laut Poststempel\nabgesandt am 21.10.2026."),
+    ("a-refund", "Die Erstattung wurde an Ihre Bank\nversendet am 21.10.2026."),
+    ("a-power-of-attorney", "Die Vollmacht Ihres Steuerberaters wurde uns\nzur Post gegeben am 21.10.2026."),
+    (
+        "english-the-reader-s-objection",
+        "Your objection, according to the envelope, was\nposted on 21 October 2026.",
+    ),
+    ("english-a-reminder", "The payment reminder to your landlord was\nmailed on 21 October 2026."),
+    ("a-label-alone-wrapped", "Ihr Antrag auf Erstattung wurde\nabgesandt\n21.10.2026"),
+    ("a-label-after-a-comma", "Ihre Unterlagen haben wir geprüft,\nVersandt am 21.10.2026"),
+    ("a-label-after-a-hyphen", "Ihre Unterlagen wurden am Schalter ab-\nVersandt am 21.10.2026"),
+]
+
+
+def test_a_field_counts_only_in_the_first_page_s_letterhead() -> None:
+    """In the body (after the salutation) a field never counts, nor on a page without a salutation, where nothing
+    shows where its letterhead ends: the letter's date's deadline, Fri 20 Nov (AO, NW; VwVfG, BY)."""
 
     def check(_id: str, text: str) -> None:
-        statement = found(text)
-        assert statement is not None and statement.day is None, statement
+        for page in (text, body(text), f"{text}{REMEDY}"):
+            assert found(page) == PostingStatement(), page
+            assert due(page) == "2026-11-20" and due(page, scope="vwvfg", region="BY") == "2026-11-20", page
 
-    check_rows([*NO_LONGER, *BESIDE_AFTER_WORDS, *SUPPOSED, *REVIEWED], check)
+    check_rows(BODY_FIELDS, check)
 
 
-def test_a_refused_wording_keeps_the_letter_s_date_s_deadline() -> None:
-    """Through the engine, for the wordings that moved a right deadline later in an earlier round: a made-up tax
-    assessment dated Fri 16 Oct 2026 (AO, NW), its header's last line ending in its date, then the wording — the
-    objection deadline counts from the letter's date (Fri 20 Nov), never from the 19th (Mon 23 Nov) or a later
-    day."""
+def test_a_wrapped_line_of_prose_is_no_field() -> None:
+    def check(_id: str, text: str) -> None:
+        for page in (text, head(text), body(text)):
+            assert found(page) == PostingStatement(), page
+            assert due(page) == "2026-11-20", page
+
+    check_rows(WRAPPED, check)
+
+
+#: Lead lines that run on into the next line (a word, a comma, a hyphen at their end), each of the words a sentence
+#: wraps at: none may stand right above a field's label that starts its line.
+_RUNNING_ON = (
+    "Der Bescheid wurde",
+    "Ihr Einspruch ist nur dann rechtzeitig, wenn er bei",
+    "Your objection was",
+    "Die Vollmacht wurde uns",
+    "Die Erstattung wurde an Ihre Bank",
+    "Wir haben die Unterlagen geprüft,",
+    "Die Unterlagen wurden ab-",
+)
+#: A field's lines that count in the letterhead under a closed line (each also a CUES row).
+_FIELD_LINES = (
+    "Tag der Aufgabe zur Post: 19.10.2026",
+    "Datum der Aufgabe zur Post: Montag, 19. Oktober 2026",
+    "Tag der Aufgabe zur Post\n19.10.2026",
+    "Absendedatum: 19.10.2026",
+    "Versandt am: 19.10.2026",
+    "Aufgabe zur Post am Montag, den 19.10.2026",
+    "Zur Post gegeben am 19.10.2026.",
+    "Date of posting: 19 October 2026",
+    "Aufgegeben am 19.10.2026",
+    "Abgesendet am 19.10.2026",
+    "Versand: 19.10.2026",
+    "Posted: 19 October 2026",
+)
+
+
+def test_a_line_that_runs_on_never_opens_a_field() -> None:
+    """Every field line: counted under a closed line in the letterhead; never under a line that runs on into it,
+    and never with its label in lower case (prose that wrapped before a participle: "wurde" over "versandt am …"),
+    whatever stands above."""
+    for field in _FIELD_LINES:
+        statement = found(head(f"Steuernummer 123/456/78901\n{field}"))
+        assert statement is not None and statement.day == D("2026-10-19"), field
+        for lead in _RUNNING_ON:
+            assert found(head(f"{lead}\n{field}")) == PostingStatement(), (lead, field)
+        lower = field[0].lower() + field[1:]
+        for lead in ("Steuernummer 123/456/78901", "", "Bearbeitungsstand:"):
+            assert found(head(f"{lead}\n{lower}")) == PostingStatement(), (lead, lower)
+
+
+def _two_column_rows(top: float, rows: list[tuple[str, str]]) -> tuple[str, list[list[Any]]]:
+    """Rows of two columns (the left at 0.10, the right at 0.65 of the page's width), as text lines and boxes."""
+    text = "".join(f"{left:<30}{right}\n" for left, right in rows)
+    words: list[list[Any]] = []
+    for index, (left, right) in enumerate(rows):
+        words += _row(top + 0.015 * index, (0.10, left), (0.65, right))
+    return text, words
+
+
+def test_a_table_in_the_body_is_never_the_letterhead_s_field() -> None:
+    """A two-column table under the salutation, its right column headed by a posting label, the boxes saying the
+    value is right under it: the body's, never a field of the letterhead (Fri 20 Nov, from the letter's date)."""
+    salutation = "Sehr geehrte Frau Beispiel,"
+    for lead in ("folgende Schreiben werden versandt:", "wir haben folgende Schreiben versandt:"):
+        table, table_words = _two_column_rows(
+            0.40, [("Mahnung", "Versanddatum"), ("Vollstreckungsankündigung", "22.10.2026")]
+        )
+        text = f"{HEADER}{salutation}\n{lead}\n{table}"
+        words = _row(0.35, (0.10, salutation)) + _row(0.37, (0.10, lead)) + table_words
+        statement = posting_statement([(1, text, words, "text")], LETTER)
+        assert statement == PostingStatement(), lead
+    # without a salutation the page shows no letterhead: a reminder's table there is not one either
+    table, table_words = _two_column_rows(
+        0.40, [("Schriftstück", "Versandt"), ("Erinnerung 2025", "22.10.2026")]
+    )
+    assert posting_statement([(1, table, table_words, "text")], LETTER) == PostingStatement()
+
+
+#: Two letters in one upload (made up): page 1 this tax assessment of Fri 16 Oct 2026, page 2 a later decision
+#: with its own header date and its own posting day. (id, the second page, the posting day found or None.)
+TWO_LETTERS = [
+    (
+        "a-later-decision-s-sentence",
+        "Finanzamt Musterstadt   Datum 22.10.2026\nÄnderungsbescheid\nSehr geehrte Frau Beispiel,\n"
+        "Hinweis: Dieser Bescheid wurde am 23.10.2026 zur Post gegeben.",
+        None,
+    ),
+    (
+        "a-later-decision-s-field",
+        "Finanzamt Musterstadt   Datum: 22.10.2026\nTag der Aufgabe zur Post: 23.10.2026\nSehr geehrte Frau Beispiel,",
+        None,
+    ),
+    (
+        "and-a-page-after-it",
+        "Finanzamt Musterstadt   Datum 22.10.2026\nÄnderungsbescheid",
+        None,
+    ),
+    # this letter's own second page (no other date in its header, or its own): its notice counts
+    (
+        "this-letter-s-second-page",
+        "Seite 2\nHinweis: Dieser Bescheid wurde am 19.10.2026 zur Post gegeben.",
+        "2026-10-19",
+    ),
+    (
+        "this-letter-s-date-on-its-second-page",
+        "Datum 16.10.2026   Seite 2\nHinweis: Dieser Bescheid wurde am 19.10.2026 zur Post gegeben.",
+        "2026-10-19",
+    ),
+]
+
+
+def test_only_this_letter_s_pages_are_read() -> None:
+    """A later letter in the same upload gives no posting day to this one: from the first page whose header dates
+    another letter, nothing is read (Fri 20 Nov, from the letter's date); this letter's own later pages are."""
     spec = DateSpec(
         type="relative",
         anchor="deemed_delivery",
@@ -659,31 +992,63 @@ def test_a_refused_wording_keeps_the_letter_s_date_s_deadline() -> None:
         unit="months",
         delivery_rule="de_admin_post",
         nature="objection",
-        legal_basis="§ 355 AO",
     )
+    first = body("Die Steuer wird festgesetzt.")
+
+    def check(_id: str, second: str, day: str | None) -> None:
+        pages: list[Any] = [(1, first, [], "text"), (2, second, [], "text")]
+        if _id == "and-a-page-after-it":
+            pages.append((3, "Hinweis: Dieser Bescheid wurde am 23.10.2026 zur Post gegeben.", [], "text"))
+        statement = posting_statement(pages, LETTER)
+        assert statement is not None and statement.day == (D(day) if day else None), statement
+        context = RuleContext(
+            today=D("2026-10-27"), region="NW", document_date=LETTER, delivery_scope="ao", posting=statement
+        )
+        assert compute_due(spec, context).due_date == ("2026-11-23" if day else "2026-11-20")
+
+    check_rows(TWO_LETTERS, check)
+    # without the letter's date as read, the first page's header date is this letter's
+    pages = [(1, f"Finanzamt Musterstadt   Datum: 16.10.2026\n{SALUTATION}", [], "text")]
+    pages.append((2, TWO_LETTERS[1][1], [], "text"))
+    assert posting_statement(pages, None) == PostingStatement()
+
+
+def test_reviewed_wordings_never_count_as_this_letter_s_posting_day() -> None:
+    """Every false find of the reviews, and every wording that no longer counts: refused by the closed forms."""
 
     def check(_id: str, text: str) -> None:
-        page = (1, f"{HEADER}{text}\nGegen diesen Bescheid ist der Einspruch gegeben.", [], "text")
-        context = RuleContext(
-            today=D("2026-10-22"),
-            region="NW",
-            document_date=LETTER,
-            delivery_scope="ao",
-            posting=posting_statement([page], LETTER),
-        )
-        receipt = compute_due(spec, context)
-        assert receipt.due_date == "2026-11-20" and POSTED_ON_LETTER not in receipt.rule_ids, receipt.steps
+        for page in everywhere(text, heading=_id not in PLACES):
+            statement = found(page)
+            assert statement is not None and statement.day is None, page
 
-    check_rows([*NO_LONGER, *BESIDE_AFTER_WORDS, *SUPPOSED, *REVIEWED], check)
+    check_rows(
+        [*NO_LONGER, *BESIDE_AFTER_WORDS, *SUPPOSED, *REVIEWED, *PLACES_NEVER, *THIS_LETTER_ONLY], check
+    )
 
 
-#: The closed sentence forms, each with several ways of filling its slots (id, page text, the form's name).
+def test_a_refused_wording_keeps_the_letter_s_date_s_deadline() -> None:
+    """Through the engine, for the wordings that moved a right deadline later in an earlier round: a made-up tax
+    assessment dated Fri 16 Oct 2026 (AO, NW; and under the VwVfG in BY), the wording in its letterhead, in its body
+    and under a notice's heading — the objection deadline counts from the letter's date (Fri 20 Nov), never from the
+    19th (Mon 23 Nov) or a later day."""
+
+    def check(_id: str, text: str) -> None:
+        for page in everywhere(text, heading=_id not in PLACES):
+            assert due(page) == "2026-11-20", page
+            assert due(page, scope="vwvfg", region="BY") == "2026-11-20", page
+
+    check_rows(
+        [*NO_LONGER, *BESIDE_AFTER_WORDS, *SUPPOSED, *REVIEWED, *PLACES_NEVER, *THIS_LETTER_ONLY], check
+    )
+
+
+#: The closed sentence forms, each with several ways of filling its slots (id, the sentence, the form's name); each
+#: counts under a notice's heading (:data:`SENTENCE_PLACES`).
 SENTENCES = [
     ("wurde-dieser-bescheid", "Dieser Bescheid wurde am 19.10.2026 zur Post gegeben.", "wurde"),
-    ("wurde-der-bescheid", "Der Bescheid wurde am 19.10.2026 zur Post gegeben.", "wurde"),
-    ("wurde-der-brief", "Der Brief wurde am 19.10.2026 zur Post gegeben.", "wurde"),
+    ("wurde-dieser-brief", "Dieser Brief wurde am 19.10.2026 zur Post gegeben.", "wurde"),
     ("wurde-dieses-schreiben", "Dieses Schreiben wurde am 19. Oktober 2026 der Post übergeben.", "wurde"),
-    ("wurde-das-schreiben", "Das Schreiben wurde am 19.10.2026 abgesandt.", "wurde"),
+    ("wurde-abgesandt", "Dieses Schreiben wurde am 19.10.2026 abgesandt.", "wurde"),
     ("wurde-a-compound", "Dieser Widerspruchsbescheid wurde am 19.10.2026 zur Post gegeben.", "wurde"),
     ("wurde-aufgegeben", "Dieser Steuerbescheid wurde am 19.10.2026 zur Post aufgegeben.", "wurde"),
     # every listed compound, each the letter naming itself after "Dieser"
@@ -691,57 +1056,58 @@ SENTENCES = [
         (f"wurde-dieser-{noun.casefold()}", f"Dieser {noun} wurde am 19.10.2026 zur Post gegeben.", "wurde")
         for noun in ("Festsetzungsbescheid", "Leistungsbescheid", "Gebührenbescheid", "Beitragsbescheid")
     ),
-    ("wurde-a-short-weekday", "Der Bescheid wurde am Mo., 19.10.2026 zur Post gegeben.", "wurde"),
-    ("wurde-a-weekday-and-den", "Der Bescheid wurde am Montag, den 19.10.2026 versandt.", "wurde"),
+    ("wurde-a-short-weekday", "Dieser Bescheid wurde am Mo., 19.10.2026 zur Post gegeben.", "wurde"),
+    ("wurde-a-weekday-and-den", "Dieser Bescheid wurde am Montag, den 19.10.2026 versandt.", "wurde"),
     ("wurde-without-a-full-stop", "Dieser Bescheid wurde am 19.10.2026 zur Post gegeben", "wurde"),
     ("wurde-wrapped", "Dieser Bescheid wurde am\n19.10.2026 zur\nPost gegeben.", "wurde"),
-    ("ist-worden", "Der Bescheid ist am 19.10.2026 zur Post gegeben worden.", "ist-worden"),
+    ("ist-worden", "Dieser Bescheid ist am 19.10.2026 zur Post gegeben worden.", "ist-worden"),
     (
         "ist-worden-schreiben",
         "Dieses Schreiben ist am Montag, dem 19.10.2026 der Post übergeben worden.",
         "ist-worden",
     ),
     ("ist-worden-versandt", "Dieser Änderungsbescheid ist am 19.10.2026 versandt worden.", "ist-worden"),
-    ("aufgabe-erfolgte", "Die Aufgabe zur Post erfolgte am 19.10.2026.", "aufgabe-erfolgte"),
-    (
-        "aufgabe-erfolgte-weekday",
-        "Die Aufgabe zur Post erfolgte am Montag, den 19.10.2026.",
-        "aufgabe-erfolgte",
-    ),
-    ("aufgabe-ist-erfolgt", "Die Aufgabe zur Post ist am 19.10.2026 erfolgt.", "aufgabe-ist-erfolgt"),
-    ("note", "Zur Post gegeben am 19.10.2026.", "note"),
-    ("note-weekday", "Zur Post gegeben am Mo. 19.10.2026", "note"),
     ("english-letter", "This letter was posted on 19 October 2026.", "english"),
     ("english-notice-mailed", "This notice was mailed on Monday, 19 October 2026.", "english"),
     ("english-decision-sent", "This decision was sent on 19 October 2026.", "english"),
 ]
-#: Where a counted sentence may stand: after another sentence, the salutation, a header line ending in a date, or a
-#: listed heading (id, page text).
+#: Where a counted sentence may stand: only right under a notice's heading that starts its text line, the form on
+#: the heading's line or the next (id, page text).
 SENTENCE_PLACES = [
-    ("after-a-sentence", "Die Steuer wird festgesetzt. Der Bescheid wurde am 19.10.2026 zur Post gegeben."),
-    (
-        "after-the-salutation",
-        "Sehr geehrte Frau Beispiel,\nDieser Bescheid wurde am 19.10.2026 zur Post gegeben.",
-    ),
-    ("after-the-header-s-date", f"{HEADER}Dieser Bescheid wurde am 19.10.2026 zur Post gegeben."),
     ("after-hinweis", "Hinweis: Dieser Bescheid wurde am 19.10.2026 zur Post gegeben."),
-    ("after-wichtiger-hinweis", "Wichtiger Hinweis: Die Aufgabe zur Post erfolgte am 19.10.2026."),
-    ("after-bitte-beachten-sie", "Bitte beachten Sie: Der Bescheid wurde am 19.10.2026 zur Post gegeben."),
+    ("after-hinweise", "Hinweise: Dieser Bescheid wurde am 19.10.2026 zur Post gegeben."),
+    ("after-hinweis-zur-zustellung", "Hinweis zur Zustellung: Dieser Bescheid wurde am 19.10.2026 versandt."),
+    ("after-hinweis-zur-absendung", "Hinweis zur Absendung: Dieser Brief wurde am 19.10.2026 versandt."),
+    ("after-wichtiger-hinweis", "Wichtiger Hinweis: Dieser Bescheid wurde am 19.10.2026 zur Post gegeben."),
+    ("after-bitte-beachten-sie", "Bitte beachten Sie: Dieser Bescheid wurde am 19.10.2026 zur Post gegeben."),
     ("a-heading-on-a-line", f"{HEADER}Vermerk: Dieser Bescheid wurde am 19.10.2026 zur Post gegeben."),
+    (
+        "the-form-on-the-heading-s-next-line",
+        body("Hinweis:\nDieser Bescheid wurde am 19.10.2026 zur Post gegeben."),
+    ),
+    ("in-the-body", body("Hinweis: Dieser Bescheid wurde am 19.10.2026 zur Post gegeben.")),
+    (
+        "after-a-sentence-on-the-line-before",
+        body("Die Steuer ist fällig.\nHinweis: Dieser Bescheid wurde am 19.10.2026 zur Post gegeben."),
+    ),
 ]
 
 
 def test_each_closed_sentence_form_counts() -> None:
     def check(_id: str, text: str, form: str) -> None:
-        statement = found(text)
+        statement = found(under_a_heading(text))
         assert statement is not None and statement.day == D("2026-10-19"), statement
         assert posting._form(" ".join(text.split())) == (form, D("2026-10-19"))
+        # only under a heading: not alone, not after the salutation, not in the letterhead
+        for page in (text, body(text), head(text), f"{HEADER}{text}"):
+            assert found(page) == PostingStatement(), page
 
     check_rows(SENTENCES, check)
 
     def place(_id: str, text: str) -> None:
         statement = found(text)
         assert statement is not None and statement.day == D("2026-10-19"), statement
+        assert due(text) == "2026-11-23"
 
     check_rows(SENTENCE_PLACES, place)
 
@@ -776,10 +1142,144 @@ def test_an_unlisted_word_in_any_slot_refuses_the_sentence() -> None:
 
     def check(_id: str, text: str, _form: str) -> None:
         for variant in _variants(text):
-            statement = found(variant)
+            statement = found(under_a_heading(variant))
             assert statement is not None and statement.day is None, variant
 
     check_rows(SENTENCES, check)
+
+
+#: Every weekday a form lists, each in a counted sentence on its own day of the week after the letter's date (Fri
+#: 16 Oct 2026): Mon 19 to Sun 25 Oct.
+_DAYS = (
+    ("Montag", "Mo", "Monday", "Mon"),
+    ("Dienstag", "Di", "Tuesday", "Tue"),
+    ("Mittwoch", "Mi", "Wednesday", "Wed"),
+    ("Donnerstag", "Do", "Thursday", "Thu"),
+    ("Freitag", "Fr", "Friday", "Fri"),
+    ("Samstag", "Sa", "Saturday", "Sat"),
+    ("Sonntag", "So", "Sunday", "Sun"),
+)
+WEEKDAYS = [
+    row
+    for offset, (long, short, english, english_short) in enumerate(_DAYS)
+    for row in (
+        (
+            f"{short}",
+            f"Dieser Bescheid wurde am {short}., {19 + offset}.10.2026 zur Post gegeben.",
+            19 + offset,
+        ),
+        (f"{long}", f"Dieser Bescheid wurde am {long}, den {19 + offset}.10.2026 versandt.", 19 + offset),
+        (f"{english}", f"This letter was posted on {english}, {19 + offset} October 2026.", 19 + offset),
+        (
+            f"{english_short}",
+            f"This notice was mailed on {english_short}, {19 + offset} October 2026.",
+            19 + offset,
+        ),
+    )
+]
+
+
+def test_each_listed_weekday_counts_on_its_day() -> None:
+    def check(_id: str, text: str, day: int) -> None:
+        statement = found(under_a_heading(text))
+        assert statement is not None and statement.day == date(2026, 10, day), statement
+
+    check_rows(WEEKDAYS, check)
+
+
+#: The grammar, word for word: a word added to a class fails this test until its rows are written.
+EXPECTED_WORDS = {
+    "DIESER": ("dieser",),
+    "DER": ("der",),
+    "DIESES": ("dieses",),
+    "NOUN_M": ("bescheid", "brief"),
+    "NOUN_N": ("schreiben",),
+    "COMPOUND_M": (
+        "steuerbescheid",
+        "widerspruchsbescheid",
+        "änderungsbescheid",
+        "festsetzungsbescheid",
+        "leistungsbescheid",
+        "gebührenbescheid",
+        "beitragsbescheid",
+    ),
+    "ZUR": ("zur",),
+    "POST": ("post",),
+    "WURDE": ("wurde",),
+    "IST": ("ist",),
+    "WORDEN": ("worden",),
+    "AM": ("am",),
+    "DEN": ("den", "dem"),
+    "WOCHENTAG": (
+        *("montag", "dienstag", "mittwoch", "donnerstag", "freitag", "samstag", "sonntag"),
+        *("mo", "di", "mi", "do", "fr", "sa", "so"),
+    ),
+    "WEEKDAY": (
+        *("monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"),
+        *("mon", "tue", "wed", "thu", "fri", "sat", "sun"),
+    ),
+    "GEGEBEN": ("gegeben", "aufgegeben"),
+    "UEBERGEBEN": ("übergeben",),
+    "VERSANDT": ("versandt", "abgesandt"),
+    "THIS": ("this",),
+    "NOUN_E": ("letter", "notice", "decision"),
+    "WAS": ("was",),
+    "POSTED": ("posted", "mailed", "sent"),
+    "ON": ("on",),
+    "DOT": (".",),
+    "COMMA": (",",),
+}
+#: The headings a form may stand under, and their forms with "zur …".
+EXPECTED_HEADING = (
+    r"(?:hinweise?(?:\s+zur\s+(?:bekanntgabe|zustellung|absendung))?|wichtiger\s+hinweis|bitte\s+beachten\s+sie"
+    r"|vermerk)\s*:\s*"
+)
+
+
+def test_the_closed_lists_are_pinned_and_each_word_is_used() -> None:
+    """Every list is as written here, and every listed word is a word of a counted row (``SENTENCES``,
+    ``WEEKDAYS``): no word stands in a list that no row needs."""
+    assert posting._WORDS == EXPECTED_WORDS
+    assert posting._HEADING.pattern == EXPECTED_HEADING
+    used = {
+        token.casefold()
+        for _id, text, *_ in (*SENTENCES, *WEEKDAYS)
+        for token in posting._TOKENS.findall(text)
+    }
+    unused = {word for words in posting._WORDS.values() for word in words} - used
+    assert not unused, unused
+
+
+_HEADINGS = (
+    "Hinweis",
+    "Hinweise",
+    "Hinweis zur Bekanntgabe",
+    "Wichtiger Hinweis",
+    "Bitte beachten Sie",
+    "Vermerk",
+)
+
+
+def test_an_unlisted_word_in_the_heading_s_slot_refuses_the_sentence() -> None:
+    """The heading is the form's lead: an unlisted word before it, inside it or in place of its colon, or the
+    heading after another sentence's end on its line, refuses the form."""
+    sentence = "Dieser Bescheid wurde am 19.10.2026 zur Post gegeben."
+    for heading in _HEADINGS:
+        page = f"{HEADER}{SALUTATION}{heading}: {sentence}\n"
+        statement = found(page)
+        assert statement is not None and statement.day == D("2026-10-19"), page
+        first, *rest = heading.split()
+        for filler in UNLISTED:
+            for variant in (
+                f"{filler} {heading}: {sentence}",
+                f"{' '.join([first, filler, *rest])}: {sentence}",
+                f"{heading} {filler}: {sentence}",
+                f"{heading} {filler} {sentence}",
+                f"Die Steuer ist fällig. {heading}: {sentence}",
+                f"{filler}. {heading}: {sentence}",
+            ):
+                assert found(f"{HEADER}{SALUTATION}{variant}\n") == PostingStatement(), variant
+        assert found(f"{HEADER}{SALUTATION}{heading} {sentence}\n") == PostingStatement(), heading
 
 
 def _letterhead_block(
@@ -820,30 +1320,48 @@ def test_a_label_starting_a_cell_counts_only_in_the_information_block() -> None:
     check_rows(INFO_BLOCK, check)
 
 
-#: A letter served under the VwZG (made up): (id, page text, served with a proof of receipt).
+#: A letter served formally, or by a plain Einschreiben (made up): (id, the words naming its service, served
+#: formally). Each stands in the letterhead's posting day's letter, above its header, in its letterhead and in its
+#: body.
 SERVICE = [
     (
         "einschreiben-mit-rueckschein",
-        "Einschreiben mit Rückschein\nTag der Aufgabe zur Post: 19.10.2026\nDieser Bescheid wird Ihnen durch "
-        "Einschreiben mit Rückschein zugestellt (§ 4 VwZG).",
+        "Dieser Bescheid wird Ihnen durch Einschreiben mit Rückschein zugestellt.",
         True,
     ),
-    ("gegen-empfangsbekenntnis", "Gegen Empfangsbekenntnis\nTag der Aufgabe zur Post: 19.10.2026", True),
-    ("section-5", "Zustellung nach § 5 Abs. 4 VwZG\nTag der Aufgabe zur Post: 19.10.2026", True),
+    ("gegen-empfangsbekenntnis", "Gegen Empfangsbekenntnis", True),
+    ("gegen-eb", "Gegen EB", True),
+    ("section-5", "Zustellung nach § 5 Abs. 4 VwZG", True),
+    ("section-5-with-its-sentence", "Zustellung nach § 5 Absatz 4 Satz 1 VwZG", True),
+    ("section-5-among-others", "Zugestellt gemäß §§ 5, 10 VwZG", True),
+    ("paragraph-5-written-out", "Zustellung nach Paragraph 5 VwZG", True),
+    ("a-pzu", "Mit Postzustellungsurkunde", True),
+    ("a-pzu-in-a-sentence", "Die Zustellung erfolgt durch Postzustellungsurkunde (§ 3 VwZG).", True),
+    ("a-zustellungsurkunde", "Zustellung durch die Post mit Zustellungsurkunde.", True),
+    ("pzu-for-short", "Zustellung mit PZU", True),
+    ("section-3", "Zustellung nach § 3 VwZG.", True),
+    ("section-3-with-its-subsection", "Zustellung gemäß § 3 Abs. 2 VwZG", True),
+    ("the-zpo-s-sections", "Zustellung nach §§ 177 ff. ZPO", True),
+    ("the-zpo-s-section-178", "Ersatzzustellung nach § 178 ZPO", True),
+    ("a-land-s-service-law", "Zustellung nach dem Landeszustellungsgesetz", True),
+    ("a-land-s-service-law-for-short", "Zustellung nach § 3 LZG", True),
+    ("served-formally", "Dieser Bescheid wird Ihnen förmlich zugestellt.", True),
+    ("a-formal-service", "Förmliche Zustellung", True),
     (
         "a-plain-einschreiben",
-        "Einschreiben\nTag der Aufgabe zur Post: 19.10.2026\nDie Zustellung erfolgt mittels Einschreiben durch "
-        "Übergabe (§ 4 VwZG).",
+        "Die Zustellung erfolgt mittels Einschreiben durch Übergabe (§ 4 VwZG).",
         False,
     ),
-    ("ordinary-post", "Tag der Aufgabe zur Post: 19.10.2026", False),
+    ("ordinary-post", "", False),
 ]
 
 
-def test_a_letter_served_with_a_proof_of_receipt_never_counts_from_its_posting() -> None:
-    """§ 4 Abs. 2 S. 1 and § 5 VwZG: served with a Rückschein or an Empfangsbekenntnis, the letter counts from the
-    receipt it proves, so the page's posting day never starts its period (Fri 20 Nov, from the letter's date); a
-    plain Einschreiben counts from its posting (§ 4 Abs. 2 S. 2 VwZG), so it does (Mon 23 Nov)."""
+def test_a_letter_served_formally_never_counts_from_its_posting() -> None:
+    """Served formally — by Postzustellungsurkunde (§ 3 VwZG, §§ 177 ff. ZPO), with a Rückschein or an
+    Empfangsbekenntnis (§ 4 Abs. 2 S. 1, § 5 VwZG), under a Land's service law — the letter counts from its
+    service, so the page's posting day never starts its period (Fri 20 Nov, from the letter's date); a plain
+    Einschreiben counts from its posting (§ 4 Abs. 2 S. 2 VwZG: the fourth day after it), so it does (Mon 23 Nov),
+    as a letter by ordinary post."""
     spec = DateSpec(
         type="relative",
         anchor="deemed_delivery",
@@ -852,18 +1370,26 @@ def test_a_letter_served_with_a_proof_of_receipt_never_counts_from_its_posting()
         delivery_rule="de_admin_post",
         nature="objection",
     )
+    field = "Tag der Aufgabe zur Post: 19.10.2026"
 
-    def check(_id: str, text: str, formal: bool) -> None:
-        statement = found(text)
-        assert statement is not None and statement.day == D("2026-10-19") and statement.formal == formal
-        context = RuleContext(
-            today=D("2026-10-22"),
-            region="NW",
-            document_date=LETTER,
-            delivery_scope="vwvfg",
-            posting=statement,
-        )
-        assert compute_due(spec, context).due_date == ("2026-11-20" if formal else "2026-11-23")
+    def check(_id: str, service: str, formal: bool) -> None:
+        for page in (
+            f"{service}\n{head(field)}",
+            f"{HEADER}{field}\n\n{service}{SALUTATION}",
+            f"{head(field)}\n{service}",
+        ):
+            statement = found(page)
+            assert (
+                statement is not None and statement.day == D("2026-10-19") and statement.formal == formal
+            ), page
+            context = RuleContext(
+                today=D("2026-10-22"),
+                region="NW",
+                document_date=LETTER,
+                delivery_scope="vwvfg",
+                posting=statement,
+            )
+            assert compute_due(spec, context).due_date == ("2026-11-20" if formal else "2026-11-23"), page
 
     check_rows(SERVICE, check)
 
@@ -1014,19 +1540,32 @@ def test_a_label_ending_its_line_takes_only_the_date_under_it() -> None:
     their line; never a table's row — so another column's date (the day of delivery, an appointment) is never the
     posting day."""
 
+    salutation = "Sehr geehrte Frau Beispiel,"
+
     def check(_id: str, text: str, words: list[list[Any]], day: str | None) -> None:
-        statement = posting_statement([(1, text, words, "text")], LETTER)
+        # the letterhead ends at the salutation, below the rows and to their left
+        page = f"{text}\n{salutation}\n"
+        boxes = [*words, *_row(0.35, (0.10, salutation))] if words else []
+        statement = posting_statement([(1, page, boxes, "text")], LETTER)
         assert statement is not None
         assert statement.day == (D(day) if day else None), statement
+        # never in the body: the same rows under the salutation
+        below = [[box[0], box[1], box[2] + 0.3, box[3], box[4] + 0.3] for box in words]
+        under = posting_statement(
+            [(1, f"{salutation}\n{text}", [*_row(0.10, (0.10, salutation)), *below], "text")], LETTER
+        )
+        assert under == PostingStatement(), under
 
     check_rows(TWO_ROWS, check)
 
 
 def test_a_photo_s_transcription_is_model_read_unless_a_text_page_says_it_too() -> None:
-    field = "Tag der Aufgabe zur Post: 19.10.2026"
+    field = head("Tag der Aufgabe zur Post: 19.10.2026")
     photo = found(field, "transcript")
     assert photo is not None and (photo.day, photo.grounding) == (D("2026-10-19"), "model_read")
-    both = posting_statement([(1, field, [], "transcript"), (2, field, [], "text")], LETTER)
+    # its second page, a text layer, says it too (in a notice: a later page's letterhead is never read)
+    notice = "Hinweis: Dieser Bescheid wurde am 19.10.2026 zur Post gegeben."
+    both = posting_statement([(1, field, [], "transcript"), (2, notice, [], "text")], LETTER)
     assert both is not None and both.grounding == "verified"
 
 
@@ -1036,7 +1575,8 @@ def test_a_photo_s_doubt_counts_once_for_its_to_do() -> None:
     — not ``low`` for one photo (``ingest.plan.compute_item``)."""
     page = (
         1,
-        "Tag der Aufgabe zur Post: 19.10.2026\nDer Einspruch ist innerhalb eines Monats einzulegen.",
+        head("Tag der Aufgabe zur Post: 19.10.2026")
+        + "\nDer Einspruch ist innerhalb eines Monats einzulegen.",
         [],
         "transcript",
     )
@@ -1077,14 +1617,18 @@ def test_a_photo_s_doubt_counts_once_for_its_to_do() -> None:
 
 def test_two_posting_days_that_differ_are_both_kept() -> None:
     statement = found(
-        "Tag der Aufgabe zur Post: 21.10.2026\n\nDieser Bescheid wurde am 19.10.2026 zur Post gegeben."
+        body("Hinweis: Dieser Bescheid wurde am 19.10.2026 zur Post gegeben.").replace(
+            SALUTATION, f"Tag der Aufgabe zur Post: 21.10.2026\n{SALUTATION}"
+        )
     )
     assert statement is not None
     assert (statement.day, statement.other) == (D("2026-10-19"), D("2026-10-21"))
     assert statement.quote == "Dieser Bescheid wurde am 19.10.2026 zur Post gegeben."
     assert statement.other_quote == "Tag der Aufgabe zur Post: 21.10.2026"
     agree = found(
-        "Tag der Aufgabe zur Post: 19.10.2026\n\nDieser Bescheid wurde am 19.10.2026 zur Post gegeben."
+        body("Hinweis: Dieser Bescheid wurde am 19.10.2026 zur Post gegeben.").replace(
+            SALUTATION, f"Tag der Aufgabe zur Post: 19.10.2026\n{SALUTATION}"
+        )
     )
     assert agree is not None and (agree.day, agree.other) == (D("2026-10-19"), None)
 

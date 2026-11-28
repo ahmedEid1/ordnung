@@ -14,52 +14,58 @@ means no. A wording outside them leaves the letter's date as the start, the earl
 form rows of ``tests/test_posting_day.py``: ``CUES``, ``INFO_BLOCK``, ``TWO_ROWS``, ``SENTENCES`` and
 ``SENTENCE_PLACES``; the sentences' slots are walked by ``test_an_unlisted_word_in_any_slot_refuses_the_sentence``):
 
+Where they may stand is closed too. Fields count only in the first page's letterhead: its lines before the
+salutation (without a salutation, nothing shows where the letterhead ends: no field). A sentence counts only right
+under a notice's heading. And only this letter's pages are read: a later page whose header gives another letter's
+date ends the reading (another letter in the same upload has its own posting day).
+
 * **A field beside its label** (``field-*``): a posting label (:data:`_LABEL`: "Tag der Aufgabe zur Post",
   "Aufgabe zur Post", "Zur Post gegeben", "Absendedatum", "Versanddatum", "Versandt", "Date of posting", …), then
   only a colon, "am" / "on" or "ist der", a weekday, "den" / "dem", the date and a full stop, and nothing else to
-  the end of its line ("Tag der Aufgabe zur Post: Mo., 19.10.2026"). The label starts its text line — or, where the
-  page has word boxes, starts its cell in the letterhead's information block on the first page: right of the
-  address window and above the salutation by the boxes (:func:`_in_info_block`). So the statute's own label as a
-  note ("Aufgabe zur Post am …") is a field too, never a looser sentence.
+  the end of its line ("Tag der Aufgabe zur Post: Mo., 19.10.2026"). The label starts its text line and opens a
+  field there (:func:`_opens_a_field`: in the information block by the boxes, or with a capital under a closed line
+  — empty, or ending in a full stop, a colon, a date or a number, never a line of prose that runs on into it); or,
+  where the page has word boxes, it starts its cell in the letterhead's information block: right of the address
+  window and above the salutation by the boxes (:func:`_in_info_block`).
 * **A field under its label** (``TWO_ROWS``): a label ending its line over its value, as a letterhead's
   information block prints a column's label above its value — on the page right under the label (by the words'
   boxes), the last thing on its row and the only words in the label's column there but a weekday ("Mo.,
   19.10.2026"); without boxes, the label alone on its line over the date alone on its line (a weekday allowed).
-* **A sentence that records this letter's posting** (``sentence-*``), as a whole clause from its first word to
-  its end (:data:`_FORMS`):
-  - "Dieser / Der Bescheid", "Dieser / Der Brief", "Dieses / Das Schreiben", or "Dieser <listed compound>"
-    ("Dieser Widerspruchsbescheid"), then "wurde am <date> zur Post gegeben / zur Post aufgegeben / der Post
-    übergeben / versandt / abgesandt", or "ist am <date> … worden";
-  - "Die Aufgabe zur Post erfolgte am <date>" / "ist am <date> erfolgt";
-  - the printed note "Zur Post gegeben am <date>";
+  The label opens its field as above.
+* **A sentence that records this letter's posting** (``sentence-*``), right under a notice's heading that starts
+  its text line (:data:`_HEADING`: "Hinweis:", "Hinweis zur Bekanntgabe:", "Bitte beachten Sie:", "Vermerk:"), the
+  rest of the heading's clause from its first word to its end (:data:`_FORMS`):
+  - "Dieser Bescheid", "Dieser Brief", "Dieses Schreiben" or "Dieser <listed compound>" ("Dieser
+    Widerspruchsbescheid"), then "wurde am <date> zur Post gegeben / zur Post aufgegeben / der Post übergeben /
+    versandt / abgesandt", or "ist am <date> … worden";
   - "This letter / notice / decision was posted / mailed / sent on <date>";
   each "am" with an optional weekday and "den" / "dem", the clause ending after its last word (a full stop at
-  most). It may open the letter's text, follow a sentence's end, the salutation's line or a line that ends in a
-  date (a header's field), or follow a listed heading and its colon (:data:`_HEADING`: "Hinweis:", "Bitte beachten
-  Sie:").
+  most). The subject names THIS letter: never plain "Der Bescheid" / "Das Schreiben", and no form without a
+  subject ("Die Aufgabe zur Post erfolgte am …"; "Zur Post gegeben am …" is a field of the letterhead).
 
 Everything else does not count. In particular, by construction and each a row (``NEVER``, ``NO_LONGER``,
-``BESIDE_AFTER_WORDS``, ``SUPPOSED``, ``REVIEWED``: every false find of the reviews): a clause that opens
-with a verb (a supposition: "Wurde der Bescheid am … zur Post gegeben, …"), goes on after its form (", so gilt
-…", "gilt … als bekannt gegeben"), opens with "Wenn", "Falls", "Sofern", "Bei", "Im Fall", "Beispiel:" or any
-other word the form does not name; a subject the form does not name (another decision, the person's objection, a
-leaflet, a copy for someone else; "der ursprüngliche Bescheid", "der Bescheid für 2024": an adjective or a phrase
-inside the subject is an unlisted word); a second posting ("erneut", "ein zweites Mal"), "spätestens", "bis zum",
-a plan, the future ("wird … zur Post gegeben", "erfolgt am"), the statute quoted ("gilt am vierten Tag nach
-Aufgabe zur Post als bekannt gegeben"); a label in mid-sentence or after other words in its cell ("Bescheid für
-2024 - Tag der Aufgabe zur Post: …", "Bestrittener Tag der Aufgabe zur Post"); a table's or the body's row with
-other cells; a date with words after it in its cell; a date that reads two ways (03/05/2026) or names no year.
+``BESIDE_AFTER_WORDS``, ``SUPPOSED``, ``REVIEWED``, ``PLACES_NEVER``, ``THIS_LETTER_ONLY``, ``BODY_FIELDS``,
+``WRAPPED``: every false find of the reviews): a sentence anywhere but under a heading (after another sentence's
+end, the salutation or a line ending in a date: a worked example, a supposition, another person's decision); a
+clause that opens with a verb, goes on after its form (", so gilt …"), or holds a word the form does not name (an
+adjective or a phrase inside the subject, "erneut", "spätestens", "bis zum", the future); a field in the body, the
+remedy notice, a table or on a later page (an example's, a date to post by, a planned dispatch); a label in
+mid-sentence, after other words in its cell or under a line of prose that runs on into it; a date with words after
+it in its cell; a date that reads two ways (03/05/2026) or names no year. A field's channel is not read: a letter
+sent electronically counts from its sending as one by post counts from its posting (§ 122 Abs. 2a AO, § 41 Abs. 2
+S. 2 VwVfG, § 37 Abs. 2 S. 2 SGB X: also the fourth day).
 
 On the field paths a few lists still decide what the layout cannot see, each a row a planted bug fails: the line
-above a field (:func:`_another_s`: a plan, an enclosure or a copy, a card or an ID, goods — "Voraussichtlich:",
-"Abschrift", "Ersatzausweis" over "Versanddatum: …"; :data:`_DOCUMENT_ABOVE` beside a label: a document named there,
-"Bescheid für 2023" over "Aufgabe zur Post: …"), and the other columns of the label's and the value's rows (a
-future or a negation, another letter's date, "vom" before the value).
+above a field (:func:`_another_s`: a plan, an enclosure or a copy, a card or an ID, goods, a future or a negation —
+"Voraussichtlich:", "Abschrift", "Ihre Bestellung 4711" over "Versanddatum: …"; :data:`_DOCUMENT_ABOVE` beside a
+label: a document named there), and the other columns of the label's and the value's rows (a future or a negation,
+another letter's date, "vom" before the value).
 
-A letter served formally under the VwZG with a proof of its receipt — "Einschreiben mit Rückschein", "gegen
-Empfangsbekenntnis", "§ 5 VwZG" — counts from that receipt (§ 4 Abs. 2 S. 1, § 5 VwZG), never from its posting:
-the statement says so (``formal``) and the engine keeps the letter's date. A plain Einschreiben does count from
-its posting (§ 4 Abs. 2 S. 2 VwZG: the third day after it), as does every letter by ordinary post.
+A letter served formally — by Postzustellungsurkunde (§ 3 VwZG), "Einschreiben mit Rückschein", "gegen
+Empfangsbekenntnis", under § 5 VwZG, the ZPO's service sections or a Land's service law (:data:`_SERVED_FORMALLY`)
+— counts from its service, never from its posting: the statement says so (``formal``) and the engine keeps the
+letter's date. A plain Einschreiben does count from its posting (§ 4 Abs. 2 S. 2 VwZG: "am vierten Tag nach der
+Aufgabe zur Post"), as does every letter by ordinary post.
 
 One posting day, or several statements that agree: that day, the first sentence or field as the quote, and the
 grounding of the page it stands on (a text layer: ``verified``; a photo's transcription: ``model_read``, if no
@@ -85,6 +91,7 @@ from ordnung.ingest.conflicts import (
     _one_date,
     _page_text,
     _page_words,
+    header,
 )
 from ordnung.ingest.normalize import fold_punctuation
 from ordnung.ingest.verify import PageInput, date_spans
@@ -185,14 +192,14 @@ _CELL_BREAK = re.compile(r"\s{2,}|\t|[|·]")
 # --------------------------------------------------------------------------------------------------
 
 #: The word classes of the sentence forms, each a closed list. A word in none of them refuses every form. The
-#: subject's nouns are how a letter calls itself; a compound only after "Dieser" (the letter naming itself: "Dieser
-#: Widerspruchsbescheid"), never after "Der" (which may be the decision a Widerspruchsbescheid rules on).
+#: subject names THIS letter: "Dieser" / "Dieses" / "This" and the noun a letter calls itself by. Never plain "Der" /
+#: "Das" ("Der Bescheid", "Das Schreiben" may be another decision's, an example's or the reader's own letter: "der" is
+#: listed only for "der Post übergeben"), and no subjectless form ("Die Aufgabe zur Post erfolgte am …", "Zur Post
+#: gegeben am …": they name no letter).
 _WORDS: dict[str, tuple[str, ...]] = {
     "DIESER": ("dieser",),
     "DER": ("der",),
     "DIESES": ("dieses",),
-    "DAS": ("das",),
-    "DIE": ("die",),
     "NOUN_M": ("bescheid", "brief"),
     "NOUN_N": ("schreiben",),
     "COMPOUND_M": (
@@ -204,17 +211,14 @@ _WORDS: dict[str, tuple[str, ...]] = {
         "gebührenbescheid",
         "beitragsbescheid",
     ),
-    "AUFGABE": ("aufgabe",),
     "ZUR": ("zur",),
     "POST": ("post",),
     "WURDE": ("wurde",),
     "IST": ("ist",),
-    "ERFOLGTE": ("erfolgte",),
-    "ERFOLGT": ("erfolgt",),
     "WORDEN": ("worden",),
     "AM": ("am",),
     "DEN": ("den", "dem"),
-    "WEEKDAY": (
+    "WOCHENTAG": (
         "montag",
         "dienstag",
         "mittwoch",
@@ -229,6 +233,8 @@ _WORDS: dict[str, tuple[str, ...]] = {
         "fr",
         "sa",
         "so",
+    ),
+    "WEEKDAY": (
         "monday",
         "tuesday",
         "wednesday",
@@ -262,8 +268,8 @@ _CLASS_OF = {word: name for name, words in _WORDS.items() for word in words}
 _DATE_TOKEN = "\x00"
 _TOKENS = re.compile(rf"{_DATE_TOKEN}|[^\W\d_]+(?:-[^\W\d_]+)*|\S")
 
-_SUBJECT = r"(?:(?:DIESER|DER) NOUN_M|DIESER COMPOUND_M|(?:DIESES|DAS) NOUN_N)"
-_ON_DAY = r"AM (?:WEEKDAY (?:DOT )?(?:COMMA )?)?(?:DEN )?DATE"
+_SUBJECT = r"(?:DIESER (?:NOUN_M|COMPOUND_M)|DIESES NOUN_N)"
+_ON_DAY = r"AM (?:WOCHENTAG (?:DOT )?(?:COMMA )?)?(?:DEN )?DATE"
 _POSTED = r"(?:ZUR POST GEGEBEN|DER POST UEBERGEBEN|VERSANDT)"
 #: The sentence forms that record this letter's posting, each a sequence over :data:`_WORDS`' classes that must
 #: be the whole clause (a full stop at most after it).
@@ -272,21 +278,18 @@ _FORMS: dict[str, re.Pattern[str]] = {
     for name, form in {
         # "Dieser Bescheid wurde am 19.10.2026 zur Post gegeben."
         "wurde": rf"{_SUBJECT} WURDE {_ON_DAY} {_POSTED}",
-        # "Der Bescheid ist am Montag, den 19.10.2026 zur Post gegeben worden."
+        # "Dieser Bescheid ist am Montag, den 19.10.2026 zur Post gegeben worden."
         "ist-worden": rf"{_SUBJECT} IST {_ON_DAY} {_POSTED} WORDEN",
-        # "Die Aufgabe zur Post erfolgte am 19.10.2026." — never the present "erfolgt am", which may be a plan
-        "aufgabe-erfolgte": rf"DIE AUFGABE ZUR POST ERFOLGTE {_ON_DAY}",
-        "aufgabe-ist-erfolgt": rf"DIE AUFGABE ZUR POST IST {_ON_DAY} ERFOLGT",
-        # the printed note "Zur Post gegeben am 19.10.2026."
-        "note": rf"ZUR POST GEGEBEN {_ON_DAY}",
         # "This letter was posted on 19 October 2026."
         "english": r"THIS NOUN_E WAS POSTED ON (?:WEEKDAY (?:COMMA )?)?DATE",
     }.items()
 }
 
-#: A notice's heading that may stand before a sentence form, closed by its colon: "Hinweis:", "Wichtiger Hinweis:",
-#: "Bitte beachten Sie:", "Vermerk:", "Hinweis zur Bekanntgabe:". Any other words before a colon ("Beispiel:",
-#: "Musterfall:", "Rechenbeispiel:") lead into an example or a supposition: unlisted, so the form is refused.
+#: The heading of a notice, the one place a sentence form may stand: it starts its text line and is closed by its
+#: colon ("Hinweis:", "Wichtiger Hinweis:", "Bitte beachten Sie:", "Vermerk:", "Hinweis zur Bekanntgabe:"), and the
+#: form follows it on its line or the next. A notice under such a heading records a fact about this letter. Any other
+#: words before the form ("Beispiel:", "Rechenbeispiel.", another sentence, a line that ends in a date) may lead into
+#: an example, a supposition or another letter's story: the form is refused there.
 _HEADING = re.compile(
     r"(?:hinweise?(?:\s+zur\s+(?:bekanntgabe|zustellung|absendung))?|wichtiger\s+hinweis|bitte\s+beachten\s+sie"
     r"|vermerk)\s*:\s*",
@@ -297,14 +300,20 @@ _HEADING = re.compile(
 # Formal service with a proof of receipt
 # --------------------------------------------------------------------------------------------------
 
-#: The letter served under the VwZG with a proof of its receipt: by "Einschreiben mit Rückschein" (§ 4 Abs. 2 S. 1
-#: VwZG: the Rückschein proves the day), "gegen Empfangsbekenntnis" (§ 5 Abs. 4 VwZG: the day the person signs), or
-#: "§ 5 VwZG" named. Its period runs from that receipt, never from a posting day. A plain Einschreiben is not here:
-#: it counts as served on the third day after its posting (§ 4 Abs. 2 S. 2 VwZG), so its posting day is the start
-#: as for any letter by post. Only ever an off switch: a "Rückschein" the letter names otherwise (a tip on how to
-#: send an objection) keeps the letter's date, the early side.
-_SERVED_WITH_RECEIPT = re.compile(
-    r"rückschein\w*|empfangsbekenntnis\w*|§\s*5\s+(?:abs(?:atz|\.)\s*\d+\s+(?:s(?:atz|\.)\s*\d+\s+)?)?vwzg",
+#: The letter served formally, in any of the ways the page may name it. Its period runs from the service, never from
+#: a posting day: by Postzustellungsurkunde (§ 3 VwZG with §§ 177 to 182 ZPO: the day the postman hands it over, which
+#: the envelope records; "PZU" for short), by "Einschreiben mit Rückschein" (§ 4 Abs. 2 S. 1 VwZG: the Rückschein
+#: proves the day), "gegen Empfangsbekenntnis" or "gegen EB" (§ 5 Abs. 4 VwZG: the day the person signs), under § 3
+#: or § 5 VwZG cited in any way ("§ 5 Abs. 4 S. 1 VwZG", "§§ 5, 10 VwZG", "Paragraph 5 VwZG"), under the ZPO's
+#: service sections (§§ 173 to 178 ZPO, "§§ 177 ff. ZPO"), under a Land's service law ("Landeszustellungsgesetz",
+#: "LZG") or "förmlich zugestellt". A plain Einschreiben is not here: it counts as served on the fourth day after its
+#: posting (§ 4 Abs. 2 S. 2 VwZG: "am vierten Tag nach der Aufgabe zur Post"), so its posting day is the start as for
+#: any letter by post. Only ever an off switch, so it may be broad: a word the letter uses in another sense (a tip on
+#: how to send an objection with a Rückschein) keeps the letter's date, the early side.
+_SERVED_FORMALLY = re.compile(
+    r"rückschein\w*|empfangsbekenntnis\w*|\bgegen\s+eb\b|(?:post)?zustellungsurkunde\w*|\bpzu\b"
+    r"|(?:§§?|paragraph)\s*[35]\b[^\n]{0,24}vwzg|förmlich\w*\s+(?:zu(?:zu)?stell|zugestellt)\w*"
+    r"|§§?\s*17[3-8]\b[^\n]{0,16}zpo|landeszustellungs\w*|\blzg\b",
     re.IGNORECASE,
 )
 
@@ -341,6 +350,24 @@ def _dates_another(line: str, own: tuple[int, int], letter_date: date | None) ->
     return False
 
 
+def _opens_a_field(label: str, previous: str, words: list[Box]) -> bool:
+    """Whether a posting label that starts its text line opens a field there, not a wrapped line of prose: by the
+    first page's word boxes it stands in the letterhead's information block (:func:`_in_info_block`); or it starts
+    with a capital, as a field's label does, and the line ``previous`` to it is closed — empty, or ending in a full
+    stop, a colon, a date or a number ("Steuernummer 123/456/78901"). A line that ends in a word, a comma or a hyphen
+    may run on into the label ("Ihr Einspruch ist nur dann rechtzeitig, wenn er bei" over "Aufgabe zur Post am …"):
+    no."""
+    if words and _in_info_block(words, label):
+        return True
+    previous = previous.rstrip()
+    return label[:1].isupper() and (
+        not previous
+        or previous[-1] in ".:"
+        or previous[-1].isdigit()
+        or any(end == len(previous) for _, end, _ in date_spans(previous))
+    )
+
+
 def _another_s(lines: Sequence[str], previous: str) -> bool:
     """Whether a field's rows ``lines`` (its label's and its value's, with the other columns' words on them) or the
     line ``previous`` to them make its posting day something else's: a plan ("voraussichtlich", "geplant",
@@ -348,12 +375,9 @@ def _another_s(lines: Sequence[str], previous: str) -> bool:
     "Zweitschrift"), a card, an ID or documents sent, goods. The label's own cell is closed (:data:`_FIELD`); these
     read what stands around it."""
     text = "\n".join(lines)
-    return bool(
-        _NOT_DONE.search(text)
-        or any(
-            pattern.search(text) or pattern.search(previous)
-            for pattern in (_PLANNED, _OBJECT, _ENCLOSURE, _GOODS)
-        )
+    return any(
+        pattern.search(text) or pattern.search(previous)
+        for pattern in (_NOT_DONE, _PLANNED, _OBJECT, _ENCLOSURE, _GOODS)
     )
 
 
@@ -425,16 +449,22 @@ def _under_label(words: list[Box], label: str, value: str) -> bool:
     return False
 
 
-def _fields(
-    text: str, words: list[Box], grounding: Grounding, letter_date: date | None, *, first: bool
-) -> list[_Found]:
-    """Posting days in a field (see the module docstring): a label right before one date that reads one way, with
-    nothing else to the end of its line, the label starting its line — or, on the ``first`` page with word boxes,
-    its cell in the letterhead's information block (:func:`_in_info_block`); or a label ending its line with its
-    value on the next (:func:`_under_labels`). Never a table's row, nor a row that dates another letter, plans the
-    posting or is about an enclosure, a card, documents or goods (:func:`_another_s`)."""
+def _letterhead(lines: list[str]) -> list[str]:
+    """The lines of a page's letterhead: those before its salutation ("Sehr geehrte Frau Beispiel,"). Without a
+    salutation there is no evidence where the letterhead ends and the body starts, so none."""
+    return next((lines[:index] for index, line in enumerate(lines) if _SALUTATION.match(line.strip())), [])
+
+
+def _fields(text: str, words: list[Box], grounding: Grounding, letter_date: date | None) -> list[_Found]:
+    """Posting days in a field of the first page's letterhead (see the module docstring): only its lines before the
+    salutation (:func:`_letterhead`) — never the body, the remedy notice, a table or a footer, where a field may be
+    an example's, a date to post by or a planned dispatch. There, a label right before one date
+    that reads one way, with nothing else to the end of its line, the label opening a field at its line's start
+    (:func:`_opens_a_field`) or starting its cell in the information block (:func:`_in_info_block`); or a label
+    ending its line with its value on the next (:func:`_under_labels`). Never a row that dates another letter, plans
+    the posting or is about an enclosure, a card, documents or goods (:func:`_another_s`)."""
     found: list[_Found] = []
-    lines = fold_punctuation(text).splitlines()
+    lines = _letterhead(fold_punctuation(text).splitlines())
     for index, line in enumerate(lines):
         previous = lines[index - 1] if index else ""
         spans = [(start, end) for start, end, _ in date_spans(line)]
@@ -444,21 +474,26 @@ def _fields(
             if field is None or day is None or not _FIELD_END.fullmatch(line[end:]):
                 continue
             label = field.start("label")
-            # the label starts its text line, or its cell in the first page's information block (no table's row)
-            if line[:label].strip() and not (
-                first
-                and words
-                and not _TABLE_ROW.search(line[:label].rstrip())
-                and _in_info_block(words, field["label"])
-            ):
+            if line[:label].strip():
+                # a label starting its cell: only in the information block by the boxes (no table's row)
+                if not (
+                    words
+                    and not _TABLE_ROW.search(line[:label].rstrip())
+                    and _in_info_block(words, field["label"])
+                ):
+                    continue
+                above = _CELL_BREAK.split(previous)[-1]  # the label's column
+            elif _opens_a_field(field["label"], previous, words):
+                above = previous
+            else:
                 continue
-            above = (
-                _CELL_BREAK.split(previous)[-1] if line[:label].strip() else previous
-            )  # the label's column
             if (
                 _another_s([line], above)
                 or _DOCUMENT_ABOVE.search(above)
                 or _dates_another(line, (start, end), letter_date)
+                # the label's column right above dates another letter ("Ihre Nachricht vom 12.10.2026" over
+                # "Abgesandt am: …"): the field may be that letter's
+                or _dates_another(_CELL_BREAK.split(above)[-1], (-1, -1), letter_date)
             ):
                 continue
             found.append(_Found(day, _short(line[label:end]), grounding))
@@ -491,6 +526,11 @@ def _under_labels(
     found = []
     spans = date_spans(following)
     for name in _labels_above(line, words):
+        if line.lstrip().startswith(name):
+            if not _opens_a_field(name, previous, words):
+                continue  # a wrapped line of prose, not a field's label
+        elif not _in_info_block(words, name):
+            continue  # a cell's label only in the information block by the boxes
         for start, end, _ in spans:
             day = _one_date(following, start, end)
             value = following[start:end]
@@ -535,40 +575,63 @@ def _form(clause: str) -> tuple[str, date] | None:
 
 
 def _sentences(text: str, grounding: Grounding) -> list[_Found]:
-    """Posting days a sentence records for this letter: a whole clause (:func:`ordnung.ingest.conflicts._clauses`)
-    that is one of the closed forms (:func:`_form`), after at most a listed heading (:data:`_HEADING`: "Hinweis:").
-    A clause runs on over lines that end without a full stop, so the sentence may also start a line of it after the
-    salutation's line ("Sehr geehrte Frau Beispiel,"), after a line that ends in a date (a header's field: "Datum
-    16.10.2026"), or on a line that opens with a listed heading; never after any other line, whose words may lead
-    into it ("Beispiel:", "Wenn")."""
+    """Posting days a sentence records for this letter: a closed form (:func:`_form`) right under a notice's heading
+    (:data:`_HEADING`) that starts its text line — the rest of the heading's clause
+    (:func:`ordnung.ingest.conflicts._clauses`), on the heading's line or the next, is the whole form. Nowhere else:
+    after another sentence's end, after the salutation or after a line that ends in a date, the words before may
+    lead into it ("Ein Beispiel.", "Angenommen, …", "Ihr Ehemann erhält einen eigenen Bescheid.")."""
     found: list[_Found] = []
     for clause, _ in _clauses(text):
+        # where the clause starts: the text's start, or after a sentence's end that a line break follows
+        lead = clause[: len(clause) - len(clause.lstrip())]
         lines = clause.strip().split("\n")
-        for index in range(len(lines)):
-            rest = " ".join(lines[index:]).strip()
-            heading = _HEADING.match(rest)
-            if index and heading is None and not _ends_a_lead(lines[index - 1]):
+        for index, line in enumerate(lines):
+            if index == 0 and lead and "\n" not in lead:
+                continue  # the clause starts in mid-line, after another sentence's end
+            heading = _HEADING.match(line)
+            if heading is None:
                 continue
-            sentence = rest[heading.end() :].strip() if heading else rest
+            sentence = " ".join([line[heading.end() :], *lines[index + 1 :]]).strip()
             if (form := _form(sentence)) is not None:
                 found.append(_Found(form[1], _short(sentence), grounding))
                 break
     return found
 
 
-def _ends_a_lead(line: str) -> bool:
-    """Whether a sentence may start on the line after ``line`` (:func:`_sentences`): ``line`` is the salutation's,
-    ending in a comma, or ends in a date."""
-    line = line.rstrip()
-    if _SALUTATION.match(line) and line.endswith(","):
-        return True
-    return any(end == len(line) for _, end, _ in date_spans(line))
+def _served_formally(pages: Sequence[PageInput]) -> bool:
+    """Whether the letter's pages say it is served formally (:data:`_SERVED_FORMALLY`): every page of the upload, as
+    the switch only ever keeps the letter's date."""
+    return any(_SERVED_FORMALLY.search(fold_punctuation(_page_text(page)[0])) for page in pages)
 
 
-def _served_with_receipt(pages: Sequence[PageInput]) -> bool:
-    """Whether the letter's pages say it is served under the VwZG with a proof of receipt
-    (:data:`_SERVED_WITH_RECEIPT`)."""
-    return any(_SERVED_WITH_RECEIPT.search(fold_punctuation(_page_text(page)[0])) for page in pages)
+#: A date in a page's header after a letter's date label ("Datum 22.10.2026", "Datum: 22.10.2026", "Date 22 Oct
+#: 2026"): the date of the letter that page starts.
+_PAGE_DATED = re.compile(r"\b(?:datum|date)\s*:?\s*$", re.IGNORECASE)
+
+
+def _page_date(text: str) -> date | None:
+    """The date a page's header (:func:`ordnung.ingest.conflicts.header`) gives after a letter's date label, if one:
+    the date of the letter that page starts. Read more loosely than the letter's own date is
+    (:func:`ordnung.ingest.conflicts._header_date`), since it can only end the reading early."""
+    for line in header(fold_punctuation(text).splitlines()):
+        for start, end, _ in date_spans(line):
+            if _PAGE_DATED.search(line[:start]) and (day := _one_date(line, start, end)) is not None:
+                return day
+    return None
+
+
+def _letter_s_pages(pages: Sequence[PageInput], letter_date: date | None) -> list[PageInput]:
+    """This letter's pages of the upload: the first, and each after it up to one whose header gives another
+    letter's date (:func:`_page_date`) — a later letter in the same upload, whose posting day is its own. That page
+    and every page after it are not read. ``letter_date``: the letter's date as read, else the first page's."""
+    own = letter_date if letter_date is not None else _page_date(_page_text(pages[0])[0])
+    kept = [pages[0]]
+    for page in pages[1:]:
+        day = _page_date(_page_text(page)[0])
+        if day is not None and day != own:
+            break
+        kept.append(page)
+    return kept
 
 
 def posting_statement(pages: Sequence[PageInput], letter_date: date | None = None) -> PostingStatement | None:
@@ -578,11 +641,12 @@ def posting_statement(pages: Sequence[PageInput], letter_date: date | None = Non
     if not pages:
         return None
     found: list[_Found] = []
-    for index, page in enumerate(pages):
+    for index, page in enumerate(_letter_s_pages(pages, letter_date)):
         text, grounding = _page_text(page)
-        found += _fields(text, _page_words(page), grounding, letter_date, first=index == 0)
+        if index == 0:
+            found += _fields(text, _page_words(page), grounding, letter_date)
         found += _sentences(text, grounding)
-    formal = _served_with_receipt(pages)
+    formal = _served_formally(pages)
     if not found:
         return PostingStatement(formal=formal)
     days = sorted({statement.day for statement in found})
