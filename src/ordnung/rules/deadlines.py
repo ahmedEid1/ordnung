@@ -1168,6 +1168,17 @@ def _read_posting_note(
     if later is None or later <= due:
         trace.warnings.append(f"{start} Counted from that day the deadline is the same.")
         return
+    # the letter states an earlier posting day than its date: the letter's date is then not the safe side, its own
+    # day's count is earlier (the date stays the letter's date's, as before)
+    page = ctx.posting.day if ctx.posting is not None else None
+    earlier = _due_from(spec, ctx, page, postal_buffer_days)[0] if page and page < ctx.document_date else None
+    if earlier is not None and earlier < due:
+        trace.soft(
+            f"{start} If it was posted then, the deadline is {fmt_date(later)}. We count from the letter's date "
+            f"({fmt_date(due)}); counted from the posting day the letter states ({fmt_date(page)}) it is "
+            f"{fmt_date(earlier)}. Check the posting day on the letter."
+        )
+        return
     trace.soft(
         f"{start} If it was posted then, the deadline is {fmt_date(later)} — we count from the letter's date "
         f"to be safe ({fmt_date(due)}). Check the posting day on the letter."

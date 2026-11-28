@@ -960,6 +960,28 @@ def test_a_later_posting_day_the_page_contradicts_says_so() -> None:
     )
 
 
+def test_a_later_posting_day_when_the_page_states_an_earlier_one_never_calls_the_letter_s_date_safe() -> None:
+    """The page states Thu 15 Oct as the posting day, a day before the letter's date (Fri 16 Oct), and the reading
+    a later one (Mon 19 Oct): the date stays the letter's date's (Fri 20 Nov), and the note says the page's own day
+    gives an earlier one (Thu 19 Nov) instead of calling the letter's date the safe side."""
+    receipt = compute_due(
+        notice_spec(anchor_date="2026-10-19"),
+        ctx(
+            today=D("2026-10-22"),
+            region="NW",
+            document_date="2026-10-16",
+            delivery_scope="ao",
+            posting=PostingStatement(day=D("2026-10-15"), quote="Tag der Aufgabe zur Post: 15.10.2026"),
+        ),
+    )
+    assert (receipt.due_date, receipt.confidence) == ("2026-11-20", "medium")
+    assert receipt.warnings[0].endswith(
+        "If it was posted then, the deadline is Mon 23 Nov 2026. We count from the letter's date (Fri 20 Nov 2026); "
+        "counted from the posting day the letter states (Thu 15 Oct 2026) it is Thu 19 Nov 2026. Check the posting "
+        "day on the letter."
+    ), receipt.warnings
+
+
 def test_a_later_posting_day_among_the_reading_s_key_facts_is_named_too() -> None:
     """The reading names the later posting day only among its key facts (``RuleContext.posting_read``), not as the
     period's start: the same note as for ``anchor_date``, one level less sure. Without pages read (the rules tools)
