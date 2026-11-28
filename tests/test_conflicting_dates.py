@@ -1436,6 +1436,14 @@ A_DECISION_NAMING_ITS_OWN_DATE = [
         "Die Leistung wird mit Bescheid vom 09.06.2026 im beantragten Umfang bewilligt.",
         id="participle-in-a-phrase-of-its-own",
     ),
+    pytest.param(
+        "Hiermit werden mit Bescheid vom 09.06.2026 die Kosten der Ersatzvornahme festgesetzt.",
+        id="hiermit-werden-mit",
+    ),
+    pytest.param(
+        "Ihnen werden mit Bescheid vom 09.06.2026 Leistungen nach dem SGB II bewilligt.",
+        id="ihnen-werden-mit",
+    ),
 ]
 
 
@@ -1578,6 +1586,38 @@ ANOTHER_DECISIONS_DATE = [
     pytest.param(
         "Der Betrag, zuletzt geändert mit Bescheid vom 09.06.2026 wird erneut angepasst.",
         id="participle-phrase-its-closing-comma-lost",
+    ),
+    pytest.param(
+        "Anders als mit Bescheid vom 09.06.2026 wird die Gebühr nunmehr auf 50,00 EUR festgesetzt.",
+        id="anders-als",
+    ),
+    pytest.param(
+        "Die Gebühr wird statt mit Bescheid vom 09.06.2026 nun mit diesem Bescheid festgesetzt.", id="statt"
+    ),
+    pytest.param(
+        "Die Gebühr wird anstatt mit Bescheid vom 09.06.2026 nun mit diesem Bescheid festgesetzt.",
+        id="anstatt",
+    ),
+    pytest.param(
+        "Die Gebühr wird gegenüber mit Bescheid vom 09.06.2026 nun um 20,00 EUR erhöht.", id="gegenueber"
+    ),
+    pytest.param(
+        "Hiermit wird die Vollstreckung aus mit Bescheid vom 09.06.2026 auf 80,00 EUR festgesetzten Forderungen"
+        " eingeleitet.",
+        id="preposition-opens-an-attribute-aus",
+    ),
+    pytest.param(
+        "Wir erinnern an die Zahlung von mit Bescheid vom 09.06.2026 für das Jahr 2025 erhobenen Beiträgen.",
+        id="preposition-opens-an-attribute-von",
+    ),
+    pytest.param(
+        "Säumniszuschläge werden auf mit Bescheid vom 09.06.2026 bereits bestandskräftig festgesetzte Beträge"
+        " erhoben.",
+        id="preposition-opens-an-attribute-auf",
+    ),
+    pytest.param(
+        "Die Gebühr wird für mit Bescheid vom 09.06.2026 im Mai erteilte Genehmigungen erhoben.",
+        id="preposition-opens-an-attribute-fuer",
     ),
     pytest.param("By our decision dated 9 June 2026 we granted the benefit.", id="en-past"),
     pytest.param(

@@ -304,9 +304,12 @@ _ISSUED_AFTER = re.compile(r"^\s*ergeh(?:t|en)\b", re.IGNORECASE)
 _FINITE_BEFORE = re.compile(rf"\b(?:wird|werden|{_PRESENT})\b", re.IGNORECASE)
 #: A word right before "mit Bescheid vom …" that makes it part of something else: an article ("die mit Bescheid
 #: vom … festgesetzte Steuer"), a comparison or a source ("wie", "laut", "gemäß", "in Verbindung mit",
-#: "zusammen mit"), or an earlier time ("bereits", "zuvor", "ursprünglich"): another decision's date.
+#: "zusammen mit"), a comparison or a substitution ("anders als", "statt", "anstatt", "außer", "gegenüber",
+#: "neben", "abweichend": the decision compared with or replaced), or an earlier time ("bereits", "zuvor",
+#: "ursprünglich"): another decision's date.
 _NOT_OWN_LEAD = re.compile(
     r"\b(?:der|die|das|dem|den|des|deren|dessen|wie|laut|gemäß|entsprechend|bereits|schon|zuvor|zuletzt"
+    r"|als|statt|anstatt|außer|gegenüber|neben|abweichend|anders"
     r"|ursprünglich|seinerzeit|damals|bisher|früher|zusammen|gemeinsam|verbindung|einklang|vergleich"
     r"|verglichen|übereinstimmung|the|as|already|previously|which|that|together|along)\s*$"
     # An article with a pronoun ("die Ihnen mit Bescheid vom … erteilte Erlaubnis"): the same thing named.
@@ -319,6 +322,13 @@ _NOT_OWN_LEAD = re.compile(
 #: letter, not the act of this one. The polite pronouns are no nouns ("Ihnen wird mit Bescheid vom … eine Frist
 #: gesetzt"). Case-sensitive, and only for a lower-case "mit": a capital "Mit" opens the sentence.
 _NOUN_BEFORE = re.compile(r"\b(?!(?:Ihnen|Sie|Ihr|Euch|Dir)\b)[A-ZÄÖÜ]\w*\s+$")
+#: A preposition right before a lower-case "mit Bescheid vom …" ("aus mit Bescheid vom … auf 80,00 EUR
+#: festgesetzten Forderungen", "für mit Bescheid vom … im Mai erteilte Genehmigungen"): in German the
+#: preposition's object can only be an extended attribute that the date stands in, a thing an earlier decision
+#: made, never the means of this letter's act ("Hiermit werden mit Bescheid vom …", "Ihnen werden mit …" count).
+_PREPOSITION_BEFORE = re.compile(
+    r"\b(?:aus|von|auf|für|um|zu|über|unter|nach|bei|gegen|ab|seit|wegen)\s*$", re.IGNORECASE
+)
 #: Verbs that take "mit" for their object ("Das Guthaben wird mit dem Bescheid vom … verrechnet", "aufrechnen",
 #: "verbinden", "zusammenführen", "vergleichen", "abstimmen", "abgleichen"): the decision is what something is
 #: set against, so an earlier one — unless that verb has its own "mit" after the date ("Mit Bescheid vom … wird
@@ -755,7 +765,9 @@ def _own_decision(before: str, after: str) -> re.Match[str] | None:
         return None
     if _INSERTED_PHRASE.search(before[: cue.start()]) and not _FINITE_BEFORE.search(lead):
         return None
-    if before.startswith("mit", cue.start()) and _NOUN_BEFORE.search(lead):
+    if before.startswith("mit", cue.start()) and (
+        _NOUN_BEFORE.search(lead) or _PREPOSITION_BEFORE.search(lead)
+    ):
         return None
     rest = re.split(r"[;!?]|\.(?:\s|$)", after)[0]  # the sentence's words after the date
     if _MIT_AS_OBJECT.search(lead) or (_MIT_AS_OBJECT.search(rest) and not re.search(r"\bmit\b", rest)):
