@@ -631,13 +631,15 @@ for a notice the cancellation named before the date in its own clause, or "bis �
 date of how long something lasts ("gilt bis", "ist bis … gültig", "läuft bis", "verlängert sich bis",
 "weiter beliefert", "continues until") or a relative clause's ("Unterlagen, die bis … eingehen, …") —
 and for a period counted from the letter a date the letter gives for itself ("mit diesem Bescheid vom
-…"; a decision's own date only in four closed forms, each a sequence of word classes from short lists in the
-code — "Mit Bescheid vom … setzen wir / wird / ergeht / erhalten Sie …" opening its sentence, "Der Bescheid vom
-… ergeht …", "By / With (our / the) decision dated …, we (hereby) refuse …", "Die Gebühr wird mit Bescheid vom
-… auf 80,00 EUR festgesetzt." — where a word of no listed class refuses the form and every other wording does
-not count: an earlier decision named in the past, as a thing, compared, replaced, by reference, to be revoked
-or offset against, the person's own letter, never do; or the
-first "Datum:" / "Date:" label of its header: on the label's line, or right under it on the
+…"; a decision's own date in one form only, the authority acting by it in the first person and the present
+tense: "Mit (dem) Bescheid / Schreiben vom … <verb> wir / ich" opening its sentence — at its start, at a
+line's start with a capital, in lower case under a table's row or a header's field, or after the salutation —
+with one of the code's listed decision verbs ("setzen wir … fest", "lehne ich … ab") right after the date and
+every other word of the form fixed; every other wording does not count, among them "Mit Bescheid vom … wird /
+werden / ergeht / erhalten Sie …", "Der Bescheid vom … ergeht …", "Die Gebühr wird mit Bescheid vom …
+festgesetzt", a compound such as "Änderungsbescheid", a file number between the date and the verb, and every
+English one, because they read the same for an earlier decision told of, a set-off, a revocation or another
+authority's act; or the first "Datum:" / "Date:" label of its header: on the label's line, or right under it on the
 page; never a table's, an event's — "Tatort", "Uhrzeit", "Termin" — or another decision's "Datum des
 Bescheids") — never its own sentence, another to-do's date, a statement naming another amount, another
 kind of payment (instalments, a prepayment, a fee, a direct debit, "erstmals am …"), another remedy,

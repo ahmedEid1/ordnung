@@ -6,7 +6,7 @@ from __future__ import annotations
 import re
 from dataclasses import replace
 from datetime import date
-from itertools import combinations, product
+from itertools import product
 from pathlib import Path
 from typing import Any
 
@@ -1389,191 +1389,185 @@ def _own_dates(sentence: str, *, above: str = "") -> list[date]:
     return [statement.letter_date for statement in letter_statements([page]) if statement.letter_date]
 
 
-def _forms(sentence: str) -> list[str]:
-    """The names of the forms of ``conflicts._own_decision`` that find a date in the sentence."""
-    found = []
-    for clause, dates in conflicts._clauses(f"Sehr geehrte Frau Beispiel,\n{sentence}\n"):
-        for index, (start, end, _) in enumerate(dates):
-            stop = dates[index + 1][0] if index + 1 < len(dates) else len(clause)
-            if (own := conflicts._own_decision(clause, start, end, stop)) is not None:
-                found.append(own.form)
-    return found
-
-
-#: The forms that count as a decision naming its own date, each with several variants: (form, sentence). A "|"
-#: marks where the form is complete (its finite verb, or its clause-final participle): every word before it stands
-#: in one of the form's slots, and the slots are walked by
-#: test_an_unlisted_word_in_any_slot_of_a_counted_form_refuses_it.
+#: The one form that counts as a decision naming its own date (``conflicts._own_decision``), one row for each of its
+#: listed verbs and words. A "|" marks where the form is complete (right after the speaker: the sentence is not
+#: read further); every word before it stands in one of the form's places, and those places are walked by
+#: test_an_unlisted_word_in_any_place_of_the_form_refuses_it.
 FORMS_THAT_COUNT = [
     pytest.param(
-        "mit-verb", "Mit Bescheid vom 09.06.2026 setzen wir| die Gebühr auf 80,00 EUR fest.", id="setzen-wir"
+        "Mit Bescheid vom 09.06.2026 entscheiden wir| über Ihren Antrag wie folgt:", id="entscheiden"
     ),
-    pytest.param("mit-verb", "Mit dem Bescheid vom 09.06.2026 lehnen wir| Ihren Antrag ab.", id="mit-dem"),
+    pytest.param("Mit Bescheid vom 09.06.2026 setzen wir| die Gebühr auf 80,00 EUR fest.", id="setzen"),
+    pytest.param("Mit dem Bescheid vom 09.06.2026 lehnen wir| Ihren Antrag ab.", id="lehnen-mit-dem"),
     pytest.param(
-        "mit-verb", "Mit Bescheid vom 09.06.2026 setze ich| das Zwangsgeld auf 200,00 EUR fest.", id="ich"
-    ),
-    pytest.param(
-        "mit-verb",
-        "Mit Bescheid vom 09.06.2026 wird| die Grundsteuer auf 312,00 EUR festgesetzt.",
-        id="passive",
+        "Mit Bescheid vom 09.06.2026 bewilligen wir| Ihnen Wohngeld für zwölf Monate.", id="bewilligen"
     ),
     pytest.param(
-        "mit-verb",
-        "Mit Gebührenbescheid vom 09.06.2026 werden| Gebühren von 80,00 EUR erhoben.",
-        id="compound-noun",
+        "Mit Bescheid vom 09.06.2026 gewähren wir| Ihnen einen Zuschuss von 300,00 EUR.", id="gewaehren"
     ),
-    pytest.param("mit-verb", "Mit Bescheid vom 09.06.2026 ergeht| folgende Entscheidung:", id="ergeht"),
+    pytest.param("Mit Bescheid vom 09.06.2026 fordern wir| 120,00 EUR zurück.", id="fordern"),
     pytest.param(
-        "mit-verb", "Mit Bescheid vom 09.06.2026 wird| hiermit ein Zwangsgeld angedroht.", id="wird-hiermit"
+        "Mit Bescheid vom 09.06.2026 erheben wir| eine Verwaltungsgebühr von 25,00 EUR.", id="erheben"
     ),
     pytest.param(
-        "mit-verb", "Mit Schreiben vom 09.06.2026 bitten wir| Sie um Zahlung.", id="schreiben-bitten"
-    ),
-    pytest.param("mit-verb", "Mit Schreiben vom 09.06.2026 erhalten Sie| die Abrechnung.", id="erhalten-sie"),
-    pytest.param(
-        "mit-verb",
-        "Mit Bescheid vom 09.06.2026, Az. 32-117/2026, wird| die Gebühr festgesetzt.",
-        id="file-number",
+        "Mit Bescheid vom 09.06.2026 stellen wir| fest, dass die Erlaubnis erloschen ist.", id="stellen"
     ),
     pytest.param(
-        "mit-verb",
-        "Mit Bescheid vom 09.06.2026 (Kassenzeichen 4711) wird| die Gebühr festgesetzt.",
-        id="bracket",
+        "Mit Schreiben vom 09.06.2026 teilen wir| Ihnen mit, dass die Gebühr fällig ist.",
+        id="teilen-schreiben",
+    ),
+    pytest.param("Mit Bescheid vom 09.06.2026 ändern wir| die Festsetzung der Hundesteuer.", id="aendern"),
+    pytest.param("Mit Bescheid vom 09.06.2026 heben wir| die Festsetzung vom Mai auf.", id="heben"),
+    pytest.param("Mit Bescheid vom 09.06.2026 erstatten wir| Ihnen 40,00 EUR.", id="erstatten"),
+    pytest.param("Mit Bescheid vom 09.06.2026 erlassen wir| die Säumniszuschläge.", id="erlassen"),
+    pytest.param(
+        "Mit dem Schreiben vom 09.06.2026 bestätigen wir| die Abmeldung Ihres Hundes.",
+        id="bestaetigen-mit-dem",
     ),
     pytest.param(
-        "mit-verb",
-        "Mit Bescheid vom 09.06.2026 wird| die Nachzahlung mit dem Guthaben aufgerechnet.",
-        id="aufgerechnet-against-something-else",
+        "Mit Bescheid vom 09.06.2026 weisen wir| Ihren Widerspruch als unbegründet zurück.", id="weisen"
+    ),
+    pytest.param("Mit Bescheid vom 09.06.2026 ordnen wir| die Beseitigung des Containers an.", id="ordnen"),
+    pytest.param(
+        "Mit Bescheid vom 09.06.2026 verpflichten wir| Sie, den Zaun zu entfernen.", id="verpflichten"
     ),
     pytest.param(
-        "mit-verb",
-        "mit Bescheid vom 09.06.2026 setzen wir| den Beitrag neu fest.",
-        id="lower-case-after-the-salutation",
+        "Mit Bescheid vom 09.06.2026 untersagen wir| Ihnen das Abstellen des Anhängers.", id="untersagen"
     ),
     pytest.param(
-        "der-ergeht",
-        "Der Bescheid vom 09.06.2026 ergeht| unter dem Vorbehalt der Nachprüfung.",
-        id="der-ergeht",
+        "Mit Bescheid vom 09.06.2026 widerrufen wir| die Erlaubnis zur Sondernutzung.", id="widerrufen"
     ),
+    pytest.param("Mit Bescheid vom 09.06.2026 nehmen wir| die Bewilligung zurück.", id="nehmen"),
     pytest.param(
-        "der-ergeht", "Der Grundsteuerbescheid vom 09.06.2026 ergeht| kostenfrei.", id="der-compound-ergeht"
+        "Mit Bescheid vom 09.06.2026 berichtigen wir| die Festsetzung der Gebühr.", id="berichtigen"
     ),
+    pytest.param("Mit Bescheid vom 09.06.2026 versagen wir| die beantragte Leistung.", id="versagen"),
+    pytest.param("Mit Bescheid vom 09.06.2026 entziehen wir| Ihnen die Erlaubnis.", id="entziehen"),
+    pytest.param("Mit Bescheid vom 09.06.2026 erteilen wir| Ihnen die Genehmigung.", id="erteilen"),
+    pytest.param("Mit Bescheid vom 09.06.2026 genehmigen wir| den Umbau des Carports.", id="genehmigen"),
     pytest.param(
-        "der-ergeht",
-        "Der Bescheid vom 09.06.2026, Az. 32-117/2026, ergeht| unter Vorbehalt.",
-        id="der-file-number-ergeht",
+        "Mit Bescheid vom 09.06.2026 erhöhen wir| die Vorauszahlungen auf 60,00 EUR.", id="erhoehen"
     ),
+    pytest.param("Mit Bescheid vom 09.06.2026 mindern wir| den Beitrag auf 30,00 EUR.", id="mindern"),
+    pytest.param("Mit Bescheid vom 09.06.2026 senken wir| die Gebühr auf 50,00 EUR.", id="senken"),
+    pytest.param("Mit Bescheid vom 09.06.2026 stunden wir| die Forderung bis zum Jahresende.", id="stunden"),
+    pytest.param("Mit Bescheid vom 09.06.2026 verlängern wir| die Erlaubnis um ein Jahr.", id="verlaengern"),
     pytest.param(
-        "english", "By our decision dated 9 June 2026, we hereby set| the fee at EUR 80.00.", id="en-hereby"
+        "mit Bescheid vom 09.06.2026 setzen wir| den Beitrag neu fest.", id="lower-case-after-the-salutation"
     ),
-    pytest.param("english", "By decision dated 9 June 2026 we refuse| your application.", id="en-present"),
-    pytest.param(
-        "english", "With our notice of 9 June 2026 we impose| a fine of EUR 100.00.", id="en-with-our-notice"
-    ),
-    pytest.param(
-        "english", "Hereby, by decision dated 9 June 2026, we refuse| your application.", id="en-hereby-first"
-    ),
-    pytest.param(
-        "english",
-        "With the notice dated 9 June 2026 the fee is hereby assessed| at EUR 80.00.",
-        id="en-passive",
-    ),
-    pytest.param(
-        "verb-mit",
-        "Die Gebühr wird mit Bescheid vom 09.06.2026 auf 80,00 EUR festgesetzt|.",
-        id="verb-at-the-end",
-    ),
-    pytest.param(
-        "verb-mit",
-        "Die Grundsteuer wird mit Bescheid vom 09.06.2026 für das Jahr 2026 auf 312,00 EUR festgesetzt|.",
-        id="verb-at-the-end-for-a-year",
-    ),
-    pytest.param(
-        "verb-mit",
-        "Die Gebühr wird mit Bescheid vom 09.06.2026 unter Vorbehalt festgesetzt|.",
-        id="unter-vorbehalt",
-    ),
-    pytest.param(
-        "verb-mit",
-        "Die Gebühr wird nunmehr mit dem Bescheid vom 09.06.2026 in Höhe von 80,00 EUR erhoben|.",
-        id="nunmehr-in-hoehe-von",
-    ),
-    pytest.param(
-        "verb-mit", "Hiermit wird mit Bescheid vom 09.06.2026 die Erlaubnis erteilt|.", id="hiermit-wird-mit"
-    ),
-    pytest.param(
-        "verb-mit", "Die Erlaubnis wird hiermit mit Bescheid vom 09.06.2026 erteilt|.", id="wird-hiermit-mit"
-    ),
-    pytest.param(
-        "verb-mit", "Ihnen wird mit Bescheid vom 09.06.2026 eine Erlaubnis erteilt|.", id="ihnen-wird-mit"
-    ),
+    pytest.param("Mit Bescheid vom 9. Juni 2026 setzen wir| die Gebühr fest.", id="month-name"),
 ]
 
 
-def test_a_form_that_counts_is_a_date_the_letter_gives_for_itself() -> None:
-    def check(form: str, marked: str) -> None:
-        sentence = marked.replace("|", "")
-        assert _own_dates(sentence) == [date(2026, 6, 9)]
-        assert _forms(sentence) == [form]
+def _as_ich(marked: str) -> str:
+    """The same row as a head of office writes it: "setzen wir" → "setze ich"."""
+    for verb, own in zip(conflicts._DECISION_VERBS, conflicts._DECISION_VERBS_I, strict=True):
+        if f" {verb} wir|" in marked:
+            return marked.replace(f" {verb} wir|", f" {own} ich|")
+    raise AssertionError(marked)
+
+
+def test_the_form_that_counts_is_a_date_the_letter_gives_for_itself() -> None:
+    def check(marked: str) -> None:
+        for sentence in (marked, _as_ich(marked)):
+            assert _own_dates(sentence.replace("|", "")) == [date(2026, 6, 9)], sentence
 
     check_rows(FORMS_THAT_COUNT, check)
 
 
-def test_every_form_the_contract_names_is_backed_by_rows() -> None:
-    """The docstring of ``_own_decision`` is the contract: each form it names has rows here, and no row is of a form
-    it does not name."""
-    doc = conflicts._own_decision.__doc__ or ""
-    named = {form for form in ("mit-verb", "der-ergeht", "english", "verb-mit") if f"``{form}``" in doc}
+def test_the_forms_lists_are_these_words_and_each_is_used_by_a_counted_row() -> None:
+    """The form's lists are pinned word for word, so widening one is a reviewed edit of this test; and each listed word
+    has a counted row above, so a word no row needs cannot stay in a list."""
+    assert conflicts._DECISION_VERBS == (
+        "entscheiden", "setzen", "lehnen", "bewilligen", "gewähren", "fordern", "erheben", "stellen", "teilen",
+        "ändern", "heben", "erstatten", "erlassen", "bestätigen", "weisen", "ordnen", "verpflichten", "untersagen",
+        "widerrufen", "nehmen", "berichtigen", "versagen", "entziehen", "erteilen", "genehmigen", "erhöhen",
+        "mindern", "senken", "stunden", "verlängern",
+    )  # fmt: skip
+    assert set(conflicts._SPEAKER_VERBS) == {"wir", "ich"}
+    assert conflicts._SPEAKER_VERBS["wir"] == set(conflicts._DECISION_VERBS)
+    assert conflicts._SPEAKER_VERBS["ich"] == set(conflicts._DECISION_VERBS_I)
+    assert not set(conflicts._DECISION_VERBS) & set(conflicts._DECISION_VERBS_I)  # "setze wir" never counts
+    assert conflicts._OWN_CUE.pattern == r"\bmit\s+(?:dem\s+)?(?:bescheid|schreiben)\s+vom\s*$"
+    assert conflicts._OWN_VERB.pattern == r"\s+(?P<verb>[^\W\d_]+)\s+(?P<speaker>[^\W\d_]+)\b"
     rows = [row.values[0] for row in FORMS_THAT_COUNT]
-    assert named == set(rows) == set(re.findall(r"``([a-z]+-?[a-z]+)``", doc.split("\n\n", 1)[1]))
-    assert all(rows.count(form) >= 3 for form in named)
-    assert all("|" in row.values[1] for row in FORMS_THAT_COUNT)
+    for verb in conflicts._DECISION_VERBS:
+        assert any(f" {verb} wir|" in row for row in rows), verb
+    assert any(row.startswith("Mit dem Bescheid") for row in rows)
+    assert any(row.startswith("Mit dem Schreiben") for row in rows)
+    assert any(row.startswith("Mit Schreiben") for row in rows)
 
 
 def test_a_form_opens_its_sentence_under_a_heading_or_a_table_row_but_not_inside_one() -> None:
-    """A form opens its sentence at a line's start with a capital, or under a line that ends in a date (a table's
-    row, no sentence's words); never after words of its own sentence on the line above."""
+    """A form opens its sentence at a line's start with a capital, or in lower case under a table's row or a header's
+    field (its last value after a column gap or a label's colon); never after words of its own sentence on the line
+    above, a sentence broken right after a date or a number among them."""
     assert _own_dates(
-        "Mit Bescheid vom 09.06.2026 wird die Gebühr festgesetzt.", above="Gebührenbescheid\n"
+        "Mit Bescheid vom 09.06.2026 setzen wir die Gebühr fest.", above="Gebührenbescheid\n"
     ) == [date(2026, 6, 9)]
     assert _own_dates(
         "mit Bescheid vom 09.06.2026 setzen wir Zinsen fest.", above="Vorauszahlungen   02.03.2026\n"
     ) == [date(2026, 6, 9)]
-    assert (
-        _own_dates("mit Schreiben vom 09.06.2026 setzen wir die Gebühr fest.", above="Nach Anhörung\n") == []
-    )
-    assert _own_dates("mit Bescheid vom 09.06.2026 wird die Gebühr festgesetzt.", above="Anders als\n") == []
+    assert _own_dates(
+        "mit Bescheid vom 09.06.2026 setzen wir Zinsen fest.",
+        above="Bescheid über Vorauszahlungen · Datum: 02.03.2026\n",
+    ) == [date(2026, 6, 9)]
+    for above, sentence in (
+        ("Nach Anhörung\n", "mit Schreiben vom 09.06.2026 setzen wir die Gebühr fest."),
+        ("Anders als\n", "mit Bescheid vom 09.06.2026 setzen wir die Gebühr fest."),
+        # a sentence the text layer broke right after a date or a number (the reviews' rows)
+        (
+            "Ihren Widerspruch gegen den Bescheid vom 02.06.2026\n",
+            "mit Schreiben vom 05.06.2026 weisen wir als unbegründet zurück.",
+        ),
+        (
+            "Ihr Widerspruch vom 03.06.2026\n",
+            "mit Bescheid vom 01.06.2026 setzen wir die Gebühr fest, wie Sie meinen.",
+        ),
+        ("Ihre Unterlagen zum Antrag 4711\n", "mit Schreiben vom 09.06.2026 erhalten Sie anbei zurück."),
+        ("Ihre Zahlung zum Kassenzeichen 4711\n", "mit Bescheid vom 09.06.2026 wird verrechnet."),
+        ("Ihre Zahlung zum Kassenzeichen 4711\n", "mit Bescheid vom 09.06.2026 setzen wir die Gebühr fest."),
+        ("Die Kopien zu Ihrem Antrag vom 01.03.2026\n", "mit Schreiben vom 09.06.2026 erhalten Sie zurück."),
+        (
+            "Den Widerspruch gegen den Bescheid Nr. 12\n",
+            "mit Schreiben vom 09.06.2026 bestätigen wir den Eingang.",
+        ),
+    ):
+        assert [day for day in _own_dates(sentence, above=above) if day.month == 6 and day.day > 3] == [], (
+            above
+        )
 
 
-#: Words of no listed class, one of each kind a form must refuse: an inflected participle, an adjective, a
-#: determiner, a possessive, a preposition that is not listed (with the noun it governs, so that only the
-#: preposition decides) and a noun. German rows get the German words, English rows the English ones.
-UNLISTED_WORDS = {
-    "de": ("festgesetzten", "vorläufig", "alle", "unser", "gegen Antrag", "Antrag"),
-    "en": ("amended", "earlier", "every", "your", "under review", "matter"),
-}
+#: Words of no listed place in the form, one of each kind it must refuse: an inflected participle, an adjective, a
+#: determiner, a possessive, prepositions that are not listed (with the noun each governs, so that only the
+#: preposition decides), a noun, a temporal adverb, a past auxiliary, the present auxiliary, "erhalten", the reader
+#: as a speaker and a file number between the date and the verb.
+UNLISTED_WORDS = (
+    "festgesetzten", "bewilligten", "vorläufig", "alle", "unser", "Ihrem", "gegen Antrag", "aus Antrag",
+    "nach Antrag", "Antrag", "bereits", "wurde", "wird", "erhalten", "Sie", "Az. 4711,",
+)  # fmt: skip
 
 
-def _slots(marked: str) -> list[int]:
-    """Where a word can be put into a counted row's slots: the row's start and every space before its "|", never
+def _places(marked: str) -> list[int]:
+    """Where a word can be put into a counted row's places: the row's start and every space before its "|", never
     inside its date."""
     form = marked[: marked.index("|")]
-    day = re.search(r"\d{2}\.\d{2}\.\d{4}|\d{1,2} [A-Z][a-z]+ \d{4}", form)
+    day = re.search(r"\d{2}\.\d{2}\.\d{4}|\d{1,2}\. [A-ZÄÖÜ][a-zäöü]+ \d{4}", form)
     assert day is not None
     return [0] + [i + 1 for i, char in enumerate(form) if char == " " and not day.start() <= i < day.end()]
 
 
-def test_an_unlisted_word_in_any_slot_of_a_counted_form_refuses_it() -> None:
-    """Unknown means no: every counted row, with a word of no listed class put into each of its slots in turn, is
-    no date of the letter's own. It walks FORMS_THAT_COUNT, so a new form is walked as soon as it has rows."""
+def test_an_unlisted_word_in_any_place_of_the_form_refuses_it() -> None:
+    """Unknown means no: every counted row, with "wir" and with "ich", with a word of no listed place put into each
+    of its places in turn, is no date of the letter's own."""
     cases = [
-        pytest.param(marked.replace("|", ""), at, word, id=f"{row.id}@{at}:{word}")
+        pytest.param(marked.replace("|", ""), at, word, id=f"{row.id}{speaker}@{at}:{word}")
         for row in FORMS_THAT_COUNT
-        for form, marked in [row.values]
-        for at in _slots(marked)
-        for word in UNLISTED_WORDS["en" if form == "english" else "de"]
+        for speaker, marked in (("", row.values[0]), ("-ich", _as_ich(row.values[0])))
+        for at in _places(marked)
+        for word in UNLISTED_WORDS
     ]
-    assert len(cases) > 500
+    assert len(cases) > 3000
 
     def check(sentence: str, at: int, word: str) -> None:
         assert _own_dates(f"{sentence[:at]}{word} {sentence[at:]}") == []
@@ -1581,62 +1575,50 @@ def test_an_unlisted_word_in_any_slot_of_a_counted_form_refuses_it() -> None:
     check_rows(cases, check)
 
 
-def test_every_word_has_one_class() -> None:
-    """The closed lists share no word, so each word of a sentence has one class (``conflicts._kind``)."""
-    lists = {
-        "verbs": {*conflicts._DECISION_VERBS, *conflicts._DECISION_VERBS_I, *conflicts._DECISION_VERBS_EN},
-        "auxiliaries": conflicts._AUXILIARIES,
-        "issued": conflicts._ISSUED,
-        "received": conflicts._RECEIVED,
-        "participles": conflicts._PARTICIPLES,
-        "articles": conflicts._ARTICLES,
-        "prepositions": conflicts._PREPOSITIONS,
-        "adverbs": conflicts._ADVERBS,
-        "speakers": conflicts._SPEAKERS,
-        "addressees": conflicts._ADDRESSEES,
-        "decision nouns": conflicts._DECISION_NOUNS,
-        "English nouns": conflicts._NOUNS_EN,
-        "currency": conflicts._CURRENCY,
-        "file labels": conflicts._FILE_LABELS,
-    }
-    for (one, first), (other, second) in combinations(lists.items(), 2):
-        assert not set(first) & set(second), (one, other)
-
-
-#: Sentences that name the letter's own decision but fall outside the forms, so do not count (recall given up on
-#: purpose: precision comes first). The letter's header date still counts for them.
+#: Sentences that name the letter's own decision but fall outside the one form, so do not count (recall given up on
+#: purpose: precision comes first). The letter's header date still counts for them. The passive, "ergeht", "erhalten
+#: Sie", "Der Bescheid vom … ergeht", the verb before "mit" and English read the same when a letter tells of an
+#: earlier decision, a set-off, a revocation or another authority's act, so none of them counts.
 OWN_BUT_OUTSIDE_THE_FORMS = [
+    pytest.param(
+        "Mit Bescheid vom 09.06.2026 wird die Grundsteuer auf 312,00 EUR festgesetzt.", id="passive"
+    ),
+    pytest.param("Mit Bescheid vom 09.06.2026 werden Gebühren von 80,00 EUR erhoben.", id="passive-plural"),
+    pytest.param("Mit Bescheid vom 09.06.2026 ergeht folgende Entscheidung:", id="ergeht"),
+    pytest.param("Mit Schreiben vom 09.06.2026 erhalten Sie die Abrechnung.", id="erhalten-sie"),
+    pytest.param("Der Bescheid vom 09.06.2026 ergeht unter dem Vorbehalt der Nachprüfung.", id="der-ergeht"),
+    pytest.param(
+        "Die Gebühr wird mit Bescheid vom 09.06.2026 auf 80,00 EUR festgesetzt.", id="verb-before-mit"
+    ),
+    pytest.param("Hiermit wird mit Bescheid vom 09.06.2026 die Erlaubnis erteilt.", id="hiermit-wird-mit"),
+    pytest.param(
+        "Hiermit wird mit Bescheid vom 09.06.2026 die Erlaubnis widerrufen.", id="hiermit-wird-widerrufen"
+    ),
+    pytest.param("Ihnen wird mit Bescheid vom 09.06.2026 eine Erlaubnis erteilt.", id="ihnen-wird-mit"),
+    pytest.param("By decision dated 9 June 2026 we refuse your application.", id="en-present"),
+    pytest.param("By our decision dated 9 June 2026, we hereby set the fee at EUR 80.00.", id="en-hereby"),
+    pytest.param("Hereby, by decision dated 9 June 2026, we refuse your application.", id="en-hereby-first"),
+    pytest.param(
+        "With the notice dated 9 June 2026 the fee is hereby assessed at EUR 80.00.", id="en-passive"
+    ),
+    pytest.param("Mit Gebührenbescheid vom 09.06.2026 setzen wir die Gebühr fest.", id="compound-noun"),
+    pytest.param(
+        "Mit Bescheid vom 09.06.2026, Az. 32-117/2026, setzen wir die Gebühr fest.", id="file-number"
+    ),
+    pytest.param(
+        "Mit Bescheid vom 09.06.2026 (Kassenzeichen 4711) setze ich das Zwangsgeld fest.", id="bracket"
+    ),
+    pytest.param("Mit Schreiben vom 09.06.2026 bitten wir Sie um Zahlung.", id="bitten-asks"),
+    pytest.param("Mit Schreiben vom 09.06.2026 erinnern wir Sie an die Zahlung.", id="erinnern-reminds"),
     pytest.param(
         "Hiermit setzen wir mit Bescheid vom 09.06.2026 die Gebühr fest.", id="active-verb-before-mit"
     ),
     pytest.param(
-        "With the notice dated 9 June 2026 the fee is hereby set at EUR 80.00.", id="en-set-is-a-verb"
-    ),
-    pytest.param(
-        "Notice of assessment\nIn the notice of 9 June 2026 the fees are hereby assessed as follows.",
-        id="en-in",
-    ),
-    pytest.param(
-        "Die Leistung wird mit Bescheid vom 09.06.2026 im beantragten Umfang bewilligt.",
-        id="inflected-participle",
-    ),
-    pytest.param(
-        "Hiermit werden mit Bescheid vom 09.06.2026 die Kosten der Ersatzvornahme festgesetzt.",
-        id="genitive-after-a-noun",
-    ),
-    pytest.param(
-        "Ihnen werden mit Bescheid vom 09.06.2026 Leistungen nach dem SGB II bewilligt.",
-        id="noun-without-article",
-    ),
-    pytest.param(
-        "Betreff: Hundesteuer 2026 Mit Bescheid vom 09.06.2026 wird die Steuer festgesetzt.",
+        "Betreff: Hundesteuer 2026 Mit Bescheid vom 09.06.2026 setzen wir die Steuer fest.",
         id="after-a-subject-line",
     ),
     pytest.param(
-        "Gemäß § 35 VwVfG wird mit Bescheid vom 09.06.2026 die Erlaubnis erteilt.", id="after-a-statute"
-    ),
-    pytest.param(
-        "Mit Schreiben vom 09.06.2026 wird Ihnen die Erstattung angekündigt.", id="schreiben-passive"
+        "Gemäß § 35 VwVfG setzen wir mit Bescheid vom 09.06.2026 die Gebühr fest.", id="after-a-statute"
     ),
 ]
 
@@ -2137,36 +2119,347 @@ MORE_EARLIER_DECISIONS = [
 ]
 
 
+#: Every sentence the attack on the closed rebuild wrote to name another decision's or letter's date (its probe,
+#: made-up letters of the Stadt Musterstadt), by route: a state an earlier decision left (A), a present passive
+#: telling of one (B), a set-off or comparison (C), "ergeht" (D), English (E), the verb before "mit" with another
+#: authority (F), a line broken after a number (G), a heading (H), the person's letter, an invoice or an enclosure
+#: (I), reminders and enforcement (J), a correction or revocation (K), a provisional decision made final (L),
+#: another authority after the verb (M), and its rows built from listed words only (Z); then the contract review's own (a quote, a line broken after a
+#: date, a heading). None may count. Its three
+#: rows in the first person and the present tense with one of main's verbs ("Mit Bescheid vom … fordern wir 80,00
+#: EUR, die bis heute nicht bezahlt sind") count on main as here: the one form does not read past its speaker.
+THE_CLOSED_ATTACKS_FALSE_RIVALS = [
+    pytest.param(
+        "Mit Bescheid vom 09.03.2026 erhalten Sie seit dem 01.01.2026 Wohngeld in Höhe von 210,00 EUR monatlich.",
+        id="A1",
+    ),
+    pytest.param(
+        "Mit Bescheid vom 09.03.2026 erhalten Sie laufend Leistungen nach dem SGB II; diese Leistungen ändern wir nun.",
+        id="A2",
+    ),
+    pytest.param(
+        "Mit Bewilligungsbescheid vom 09.03.2026 erhalten Sie bis zum 30.09.2026 Elterngeld.", id="A3"
+    ),
+    pytest.param(
+        "Mit Schreiben vom 09.03.2026 erhalten Sie von der Familienkasse eine Abrechnung, auf die wir verweisen.",
+        id="A4",
+    ),
+    pytest.param(
+        "Mit Bescheid vom 09.03.2026 erhalten Sie bereits eine Erstattung; eine zweite ist nicht möglich.",
+        id="A5",
+    ),
+    pytest.param(
+        "Mit Rentenbescheid vom 09.03.2026 erhalten Sie eine Rente, die wir als Einkommen anrechnen.", id="A6"
+    ),
+    pytest.param(
+        "Mit Bescheid vom 09.03.2026 wird der Grundsteuermessbetrag vom Finanzamt festgesetzt; daran ist die Stadt gebunden.",
+        id="B1",
+    ),
+    pytest.param(
+        "Mit Feststellungsbescheid vom 09.03.2026 werden die Besteuerungsgrundlagen festgestellt, an die wir gebunden sind.",
+        id="B2",
+    ),
+    pytest.param(
+        "Mit Grundlagenbescheid vom 09.03.2026 wird über den Messbetrag entschieden; diesen Bescheid erlässt das Finanzamt.",
+        id="B3",
+    ),
+    pytest.param(
+        "Mit Bescheid vom 09.03.2026 werden Ihnen Leistungen vorläufig bewilligt; diese setzen wir heute endgültig fest.",
+        id="B4",
+    ),
+    pytest.param(
+        "Mit Bescheid vom 09.03.2026 wird der Betrag von 80,00 EUR zum 01.04.2026 fällig, den Sie noch nicht gezahlt haben.",
+        id="B5",
+    ),
+    pytest.param(
+        "Mit Bescheid vom 09.03.2026 wird Ihr Antrag abgelehnt. Hiergegen richtet sich Ihr Widerspruch.",
+        id="B6",
+    ),
+    pytest.param("Mit Mahnbescheid vom 09.03.2026 wird die Forderung gerichtlich geltend gemacht.", id="B7"),
+    pytest.param(
+        "Mit Bescheid vom 09.03.2026 werden die Vorauszahlungen angepasst, die das Finanzamt erhebt.", id="B8"
+    ),
+    pytest.param(
+        "Mit Vollstreckungsbescheid vom 09.03.2026 wird die Forderung tituliert; wir vollstrecken daraus.",
+        id="B9",
+    ),
+    pytest.param("Mit Bescheid vom 09.03.2026 wird nach Ihrer Auffassung zu viel gefordert.", id="B10"),
+    pytest.param(
+        "Mit Bescheid vom 09.03.2026 wird laut Ihrem Widerspruch die Gebühr falsch berechnet.", id="B11"
+    ),
+    pytest.param(
+        "Mit Bescheid vom 09.03.2026 wird, wie Sie schreiben, die Gebühr doppelt erhoben.", id="B12"
+    ),
+    pytest.param("Mit dem Bescheid vom 09.03.2026 wird Ihr Guthaben von 80,00 EUR verrechnet.", id="C1"),
+    pytest.param("Mit dem Bescheid vom 09.03.2026 wird die Erstattung aufgerechnet.", id="C2"),
+    pytest.param("Mit dem Bescheid vom 09.03.2026 wird dieser Bescheid verbunden.", id="C3"),
+    pytest.param("Mit dem Bescheid vom 09.03.2026 werden die neuen Zahlen verglichen.", id="C4"),
+    pytest.param("Mit Bescheid vom 09.03.2026 wird verrechnet, was Sie zu viel gezahlt haben.", id="C5"),
+    pytest.param("Mit dem Abrechnungsbescheid vom 09.03.2026 wird die Nachzahlung verrechnet.", id="C6"),
+    pytest.param("Mit dem Bescheid vom 09.03.2026 werden Ihre Zahlungen abgeglichen.", id="C7"),
+    pytest.param(
+        "Der Bescheid vom 09.03.2026 ergeht weiterhin unter Vorbehalt der Nachprüfung; das ändert dieser Bescheid nicht.",
+        id="D1",
+    ),
+    pytest.param(
+        "Der Mahnbescheid vom 09.03.2026 ergeht an Ihren früheren Wohnsitz, wie Sie vortragen.", id="D2"
+    ),
+    pytest.param(
+        "Der Änderungsbescheid vom 09.03.2026 ergeht kraft Gesetzes vorläufig, wir heben ihn hiermit auf.",
+        id="D3",
+    ),
+    pytest.param("Mit Bescheid vom 09.03.2026 ergeht nach Ihrer Ansicht eine falsche Entscheidung.", id="D4"),
+    pytest.param(
+        "Der Widerspruchsbescheid vom 09.03.2026 ergeht nach Angaben des Landratsamts kostenfrei.", id="D5"
+    ),
+    pytest.param(
+        "By decision dated 9 March 2026 we set the fee at EUR 80.00. That decision is revoked.", id="E1"
+    ),
+    pytest.param("By notice dated 9 March 2026, we set your rent subsidy; we now amend it.", id="E2"),
+    pytest.param("With our notice of 9 March 2026 we set a deadline that you missed.", id="E3"),
+    pytest.param("By the decision of 9 March 2026 we set the fee too high, so we correct it below.", id="E4"),
+    pytest.param(
+        "By decision dated 9 March 2026 we grant you housing benefit until December, as you know.", id="E5"
+    ),
+    pytest.param("With the notice dated 9 March 2026 we inform you every year about the tax.", id="E6"),
+    pytest.param("By our decision of 9 March 2026, we request payment, which is still outstanding.", id="E7"),
+    pytest.param("By decision dated 9 March 2026 we hereby set off your refund.", id="E8"),
+    pytest.param("With decision dated 9 March 2026 we compare the figures below.", id="E9"),
+    pytest.param(
+        "By the notice dated 9 March 2026, the fee is hereby assessed by the tax office, not by us.", id="E10"
+    ),
+    pytest.param(
+        "Der Grundsteuermessbetrag wird mit Bescheid vom 09.03.2026 des Finanzamts festgesetzt.", id="F1"
+    ),
+    pytest.param("Das Wohngeld wird mit Bescheid vom 09.03.2026 von der Wohngeldstelle bewilligt.", id="F2"),
+    pytest.param("Die Steuer wird mit Bescheid vom 09.03.2026 von dem Finanzamt erhoben.", id="F3"),
+    pytest.param("Die Rente wird mit Bescheid vom 09.03.2026 der Rentenversicherung gewährt.", id="F4"),
+    pytest.param("Der Kinderzuschlag wird mit Bescheid vom 09.03.2026 der Familienkasse abgelehnt.", id="F5"),
+    pytest.param(
+        "Die Kosten werden mit Bescheid vom 09.03.2026 im Widerspruchsverfahren festgesetzt.", id="F6"
+    ),
+    pytest.param(
+        "Die Leistung wird mit Bescheid vom 09.03.2026 des Jobcenters für den Monat April erstattet.", id="F7"
+    ),
+    pytest.param(
+        "Ihnen wird mit Bescheid vom 09.03.2026 von der Krankenkasse ein Zuschuss gewährt.", id="F8"
+    ),
+    pytest.param("Der Bescheid wird mit Bescheid vom 09.03.2026 des Landratsamts aufgehoben.", id="F9"),
+    pytest.param(
+        "Die Gebühr wird mit Bescheid vom 09.03.2026 unter Vorbehalt der Nachprüfung des Finanzamts erhoben.",
+        id="F10",
+    ),
+    pytest.param(
+        "Ihre Unterlagen zum Antrag 4711\nmit Schreiben vom 09.03.2026 erhalten Sie anbei zurück.", id="G1"
+    ),
+    pytest.param(
+        "Die Kopien zu Ihrem Antrag vom 01.03.2026\nmit Schreiben vom 09.03.2026 erhalten Sie zurück.",
+        id="G2",
+    ),
+    pytest.param(
+        "Wegen der Gebühr 80,00 EUR für 2026\nmit Bescheid vom 09.03.2026 wird auf die Anlage verwiesen.",
+        id="G3",
+    ),
+    pytest.param(
+        "Ihre Zahlung zum Kassenzeichen 4711\nmit Bescheid vom 09.03.2026 wird verrechnet.", id="G4"
+    ),
+    pytest.param(
+        "Den Widerspruch gegen den Bescheid Nr. 12\nmit Schreiben vom 09.03.2026 erhalten Sie in Kopie.",
+        id="G5",
+    ),
+    pytest.param("Sachverhalt:\nMit Bescheid vom 09.03.2026 wird Ihr Antrag abgelehnt.", id="H1"),
+    pytest.param(
+        "Bisheriger Verlauf\nMit Bescheid vom 09.03.2026 werden Ihnen 300,00 EUR erstattet.", id="H2"
+    ),
+    pytest.param(
+        "Zur Erinnerung:\nMit Bescheid vom 09.03.2026 erhalten Sie eine Nachforderung über 80,00 EUR.",
+        id="H3",
+    ),
+    pytest.param(
+        "Verlauf: 1. Mit Bescheid vom 09.03.2026 wird die Gebühr erhoben. 2. Sie zahlen nicht.", id="H4"
+    ),
+    pytest.param(
+        "Hinweis zum Vorbescheid\nMit Bescheid vom 09.03.2026 ergeht nur eine vorläufige Entscheidung.",
+        id="H5",
+    ),
+    pytest.param("Mit Schreiben vom 09.03.2026 bitten wir als Eheleute um Aufschub, schreiben Sie.", id="I1"),
+    pytest.param("Mit Ihrem Schreiben vom 09.03.2026 erhalten Sie unsere Antwort.", id="I2"),
+    pytest.param("Mit Rechnung vom 09.03.2026 erhalten Sie die Kosten des Gutachters.", id="I3"),
+    pytest.param(
+        "Mit Schreiben vom 09.03.2026 erhalten Sie die Anlage, die wir Ihnen erneut beifügen.", id="I4"
+    ),
+    pytest.param("Anlage: Mit Bescheid vom 09.03.2026 erhalten Sie die Abrechnung.", id="I6"),
+    pytest.param(
+        "Mit Kostenbescheid vom 09.03.2026 erhalten Sie die Rechnung des Abschleppdienstes.", id="I7"
+    ),
+    pytest.param(
+        "Mit Bescheid vom 09.03.2026 wird eine Gebühr festgesetzt, die noch offen ist; wir vollstrecken sie.",
+        id="J3",
+    ),
+    pytest.param(
+        "Mit Bescheid vom 09.03.2026 werden Säumniszuschläge erhoben, die wir jetzt beitreiben.", id="J4"
+    ),
+    pytest.param("Mit Bescheid vom 09.03.2026 erinnern wir Sie zum zweiten Mal; heute mahnen wir.", id="J5"),
+    pytest.param(
+        "Mit Leistungsbescheid vom 09.03.2026 wird der Betrag gefordert, aus dem wir nun vollstrecken.",
+        id="J6",
+    ),
+    pytest.param(
+        "Mit Bescheid vom 09.03.2026 wird Ihnen zu Unrecht Wohngeld bewilligt; diesen Bescheid nehmen wir zurück.",
+        id="K1",
+    ),
+    pytest.param(
+        "Mit Bescheid vom 09.03.2026 wird die Gebühr irrtümlich zu hoch festgesetzt. Wir berichtigen das.",
+        id="K2",
+    ),
+    pytest.param(
+        "Mit Bescheid vom 09.03.2026 werden 100,00 EUR erstattet, nach diesem Bescheid nur 60,00 EUR.",
+        id="K3",
+    ),
+    pytest.param("Mit Bescheid vom 09.03.2026 ergeht ein Bescheid, den wir hiermit widerrufen.", id="K4"),
+    pytest.param(
+        "Die Gebühr wird mit Bescheid vom 09.03.2026 auf 80,00 EUR festgesetzt, nicht wie jetzt auf 60,00 EUR.",
+        id="K5",
+    ),
+    pytest.param(
+        "Mit Bescheid vom 09.03.2026 wird Ihnen ein Zuschuss gewährt, der hiermit widerrufen wird.", id="K6"
+    ),
+    pytest.param(
+        "Mit Bescheid vom 09.03.2026 werden Ihnen Leistungen vorläufig gewährt. Abschließend setzen wir fest:",
+        id="L1",
+    ),
+    pytest.param("Mit vorläufigem Bescheid vom 09.03.2026 erhalten Sie 400,00 EUR.", id="L2"),
+    pytest.param(
+        "Die Leistungen werden mit Bescheid vom 09.03.2026 vorläufig bewilligt; nun entscheiden wir abschließend.",
+        id="L3",
+    ),
+    pytest.param(
+        "Mit Bescheid vom 09.03.2026 ergehen die Festsetzungen vorläufig; dieser Bescheid ist endgültig.",
+        id="L4",
+    ),
+    pytest.param("Mit Bescheid vom 09.03.2026 wird vom Landratsamt die Fahrerlaubnis entzogen.", id="M1"),
+    pytest.param("Mit Bescheid vom 09.03.2026 werden durch die Bundesagentur Leistungen bewilligt.", id="M2"),
+    pytest.param(
+        "Mit Bescheid vom 09.03.2026 erhalten Sie von der Deutschen Rentenversicherung eine Rente.", id="M3"
+    ),
+    pytest.param("Mit Schreiben vom 09.03.2026 erhalten Sie vom Amtsgericht eine Ladung.", id="M4"),
+    pytest.param("Die Steuer wird mit Bescheid vom 09.03.2026 von dem Finanzamt festgesetzt.", id="Z1"),
+    pytest.param("Der Messbetrag wird mit Bescheid vom 09.03.2026 des Finanzamts festgesetzt.", id="Z2"),
+    pytest.param("Die Rente wird mit Bescheid vom 09.03.2026 von der Rentenversicherung gewährt.", id="Z3"),
+    pytest.param("Der Antrag wird mit Bescheid vom 09.03.2026 der Familienkasse abgelehnt.", id="Z4"),
+    pytest.param(
+        "Die Kosten werden mit Bescheid vom 09.03.2026 im Widerspruchsverfahren festgesetzt.", id="Z5"
+    ),
+    pytest.param(
+        "Die Erstattung wird mit Bescheid vom 09.03.2026 von dem Jobcenter zurückgefordert.", id="Z6"
+    ),
+    pytest.param(
+        "Mit Bescheid vom 09.03.2026 werden Ihnen von der Wohngeldstelle 200,00 EUR bewilligt.", id="Z7"
+    ),
+    pytest.param("Mit Bescheid vom 09.03.2026 erhalten Sie von der Rentenversicherung 400,00 EUR.", id="Z8"),
+    pytest.param("Mit Schreiben vom 09.03.2026 erhalten Sie von dem Amtsgericht die Ladung.", id="Z9"),
+    pytest.param("By decision dated 9 March 2026 we set the fee.", id="Z10"),
+    pytest.param("By the notice of 9 March 2026 we set the tax.", id="Z11"),
+    pytest.param("Der Bescheid vom 09.03.2026 ergeht von dem Finanzamt.", id="Z12"),
+    pytest.param("Mit Bescheid vom 09.03.2026 ergeht von der Kreiskasse die Festsetzung.", id="Z13"),
+    pytest.param("Das Guthaben wird mit dem Bescheid vom 09.03.2026 aufgerechnet.", id="Z14"),
+    pytest.param(
+        "Der Zuschuss wird mit Bescheid vom 09.03.2026 unter dem Vorbehalt der Familienkasse gewährt.",
+        id="Z15",
+    ),
+    pytest.param(
+        "Ihnen wird mit Bescheid vom 09.03.2026 von der Familienkasse ein Zuschlag gewährt.", id="Z16"
+    ),
+    pytest.param("Der Bescheid wird mit Bescheid vom 09.03.2026 des Landratsamts aufgehoben.", id="Z17"),
+    pytest.param(
+        "Die Gebühr wird mit Bescheid vom 09.03.2026 für den Bescheid des Landratsamts erhoben.", id="Z18"
+    ),
+    pytest.param("Mit dem Bescheid vom 09.03.2026 wird der Bescheid von der Kreiskasse geändert.", id="Z19"),
+    pytest.param(
+        "Die Leistung wird mit Bescheid vom 09.03.2026 in dem Verfahren des Jobcenters bewilligt.", id="Z20"
+    ),
+    pytest.param("With the notice of 9 March 2026 the fee is hereby assessed.", id="Z21"),
+    pytest.param(
+        "Die Gebühr wird mit Bescheid vom 09.03.2026 von 80,00 EUR auf 60,00 EUR geändert.", id="Z22"
+    ),
+    pytest.param("Die Steuer wird mit Bescheid vom 09.03.2026 für 2025 festgesetzt.", id="Z23"),
+    pytest.param("Mit Bescheid vom 09.03.2026 wird Ihnen von dem Finanzamt die Steuer erstattet.", id="Z24"),
+    pytest.param("Der Beitrag wird mit Bescheid vom 09.03.2026 von der Krankenkasse erhoben.", id="Z25"),
+    pytest.param(
+        "Im Widerspruchsverfahren gilt:\nMit Bescheid vom 01.06.2026 wird die Gebühr festgesetzt; dieser Bescheid ist rechtswidrig.",
+        id="quoted-or-wrapped-0",
+    ),
+    pytest.param(
+        "Sie tragen vor: Mit Bescheid vom 01.06.2026 setzen wir die Gebühr fest.", id="quoted-or-wrapped-1"
+    ),
+    pytest.param(
+        "Ihr Widerspruch vom 03.06.2026\nmit Bescheid vom 01.06.2026 setzen wir die Gebühr fest, wie Sie meinen.",
+        id="quoted-or-wrapped-2",
+    ),
+    pytest.param(
+        "„Mit Bescheid vom 01.06.2026 setzen wir die Gebühr fest.“ So steht es in Ihrem Bescheid.",
+        id="quoted-or-wrapped-3",
+    ),
+    pytest.param(
+        '"Mit Bescheid vom 01.06.2026 setzen wir die Gebühr fest." heißt es dort.', id="quoted-or-wrapped-4"
+    ),
+    pytest.param(
+        "Der Bescheid vom 01.06.2026 bleibt bestehen; der Bescheid vom 03.06.2026 ergeht gesondert.",
+        id="quoted-or-wrapped-5",
+    ),
+    pytest.param(
+        "Mit Bescheid vom 01.06.2026 ergehen die Gebühren des Vorjahres nicht mehr.", id="quoted-or-wrapped-6"
+    ),
+    pytest.param(
+        "Mit Schreiben vom 01.06.2026 erhalten Sie keine weitere Nachricht von uns, wie Sie wünschten.",
+        id="quoted-or-wrapped-7",
+    ),
+    pytest.param(
+        "Zu Ziffer 2:\nMit Bescheid vom 01.06.2026 werden die Kosten festgesetzt, die wir mit diesem Bescheid aufheben.",
+        id="quoted-or-wrapped-14",
+    ),
+    pytest.param(
+        "Vorgang 2026/17   01.06.2026\nmit Bescheid vom 01.06.2026 wird dieser Vorgang ersetzt.",
+        id="quoted-or-wrapped-15",
+    ),
+]
+
+
 def test_another_decisions_date_is_not_the_letters_own() -> None:
     check_rows(
-        [*ANOTHER_DECISIONS_DATE, *THE_REVIEWS_FALSE_RIVALS, *MORE_EARLIER_DECISIONS],
+        [
+            *ANOTHER_DECISIONS_DATE,
+            *THE_REVIEWS_FALSE_RIVALS,
+            *MORE_EARLIER_DECISIONS,
+            *THE_CLOSED_ATTACKS_FALSE_RIVALS,
+        ],
         lambda sentence: _assert_equal(_own_dates(sentence), []),
-        at_least=200,
+        at_least=300,
     )
 
 
 def test_a_decision_that_revokes_an_earlier_one_gives_only_its_own_date() -> None:
     """The new decision's date is its own; the old decision's, named in the same sentence, is not."""
     assert _own_dates(
-        "Mit Bescheid vom 10.06.2026 werden die mit Bescheid vom 05.06.2026 bewilligten Leistungen aufgehoben."
+        "Mit Bescheid vom 10.06.2026 heben wir die mit Bescheid vom 05.06.2026 bewilligten Leistungen auf."
     ) == [date(2026, 6, 10)]
-    assert _own_dates("Mit Bescheid vom 10.06.2026 wird der Bescheid vom 05.06.2026 aufgehoben.") == [
+    assert _own_dates("Mit Bescheid vom 10.06.2026 heben wir den Bescheid vom 05.06.2026 auf.") == [
         date(2026, 6, 10)
     ]
     assert _own_dates(
-        "Mit Bescheid vom 30.05.2026 wird der mit Bescheid vom 12.05.2026 festgesetzte Betrag geändert."
+        "Mit Bescheid vom 30.05.2026 ändern wir den mit Bescheid vom 12.05.2026 festgesetzten Betrag."
     ) == [date(2026, 5, 30)]
 
 
 def test_a_decision_dated_a_day_before_its_header_counts_from_the_earlier_date() -> None:
     """A made-up municipal fee decision dated Wed 10 Jun 2026 in its header names its decision Tue 9 Jun 2026 in
-    its text ("Mit Bescheid vom … wird … festgesetzt"): the objection month counts from the earlier date, the
+    its text ("mit Bescheid vom … setzen wir … fest"): the objection month counts from the earlier date, the
     receipt names both and the to-do is "Please check"."""
     from ordnung.ingest.plan import checked_evidence
 
     text = (
         "Stadt Musterstadt · Ordnungsamt\nDatum: 10.06.2026\nSehr geehrte Frau Beispiel,\n"
-        "mit Bescheid vom 09.06.2026 wird für die Sondernutzung eine Gebühr von 80,00 EUR festgesetzt.\n"
+        "mit Bescheid vom 09.06.2026 setzen wir für die Sondernutzung eine Gebühr von 80,00 EUR fest.\n"
         "Gegen diesen Bescheid kann innerhalb eines Monats nach Bekanntgabe Widerspruch erhoben werden.\n"
     )
     objection = item(

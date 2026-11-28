@@ -24,14 +24,14 @@ second statement:
   eingehen, bearbeiten wir noch …") — and a period after this letter's date or its arrival ("binnen 14
   Tagen nach Zugang dieses Schreibens", never "nach Erhalt unseres Schreibens vom …"); and, for any
   period counted from the letter, a date the letter gives for itself ("mit diesem Bescheid vom …", "this
-  letter dated …"; a decision's own date only in the four forms of :func:`_own_decision`, each a closed sequence
-  of word classes — "Mit Bescheid vom … setzen wir / wird / ergeht / erhalten Sie …" opening the sentence, "Der
-  Bescheid vom … ergeht …", "By / With (our / the) decision dated …, we (hereby) refuse …", "Die Gebühr wird mit
-  Bescheid vom … auf 80,00 EUR festgesetzt." — where a word of no listed class refuses the form, and every
-  other wording does not count: an earlier decision named in the past, as a thing, compared, replaced, by
-  reference, to revoke it or to offset against it, the person's own letter, a thing named by its letter's date);
-  and the first "Datum:" / "Date:" label of its first page's header, :func:`_header_date` — on the label's
-  line or right under it on the page, never a "Datum" in its body, a table's, an event's or another decision's, nor a date that reads two ways).
+  letter dated …"; a decision's own date only in the one form of :func:`_own_decision`, the authority acting
+  by it in the first person and the present tense — "Mit (dem) Bescheid / Schreiben vom … setzen wir / lehne ich
+  …" opening its sentence, every word from a short list — and every other wording does not count, the passive
+  "… wird …", "… ergeht …", "… erhalten Sie …" and English among them: they read the same for an earlier
+  decision told of, a set-off, a revocation or another authority's act); and the first "Datum:" / "Date:"
+  label of its first page's header, :func:`_header_date` — on the label's line or right under it on the
+  page, never a "Datum" in its body, a table's, an event's or another decision's, nor a date that reads two
+  ways).
   Only statements that plausibly concern the *same* obligation count:
   never a recurring to-do, money coming in, or a to-do with no date; never a statement whose sentence
   is the to-do's own quote, whose date is another to-do's, which names a different amount (an
@@ -250,81 +250,41 @@ _SELF_DATE = re.compile(
     r"(?:vom|dated|of)\s*$",
     re.IGNORECASE,
 )
-#: How a decision names its own date (:func:`_own_decision`) is read as a small grammar, not as a pattern: the
-#: sentence is split into words (:func:`_tokens`), each word gets ONE class from the closed lists below, and each
-#: form that counts is a sequence of those classes. A word in no list is ``other``, and ``other`` in any of a form's
-#: places refuses the form: an adjective, an inflected participle, a determiner, a preposition or a verb nobody
-#: listed fails by construction (unknown means no). Every list is as short as the forms need: each word in one is a
-#: way in. A capitalised German word in no list is a ``noun``, and a noun is allowed only where a listed article or
-#: preposition governs it.
+#: A decision naming its own date (:func:`_own_decision`): ONE form counts, the performative one ("Mit Bescheid vom
+#: … setzen wir … fest"). An authority that writes "with the decision of D we set / refuse / grant …" in the first
+#: person and the present tense acts by that decision, so D is this letter's own decision's date. Every word of the
+#: form is one of the few listed here, and any other word in its place refuses it (unknown means no). After the
+#: speaker the sentence is not read: the verb with its speaker is the evidence. The passive ("… wird / werden …"),
+#: "… ergeht …", "… erhalten Sie …", "Der Bescheid vom … ergeht", the verb before "mit" and every English wording
+#: read the same whether a letter speaks of itself or tells of an earlier decision, a state it left, a set-off, a
+#: revocation or another authority's act: no list of words tells them apart, so they do not count. Each listed word
+#: is used by a counted row of the tests (``FORMS_THAT_COUNT``).
 #:
-#: The verbs an authority decides, asks or tells with, in the present tense ("setzen wir … fest", "lehnen wir …
-#: ab", "bitten wir Sie"): the letter's own act. Their past forms ("setzten", "lehnten") are not here, nor
-#: "haben" or "hatten": a decision named in the past is an earlier one. Nor a verb that takes "mit" for its object
-#: ("verrechnen", "vergleichen", "verbinden"): the decision is then what something is set against.
+#: The decision the phrase names: "(mit) (dem) Bescheid / Schreiben vom" — not a compound ("Änderungsbescheid"), a
+#: possessive ("Ihrem", "unserem") or an adjective before the noun, which name a decision of their own.
+_OWN_CUE = re.compile(r"\bmit\s+(?:dem\s+)?(?:bescheid|schreiben)\s+vom\s*$", re.IGNORECASE)
+#: The verbs an authority regulates a case with, in the present tense ("setzen wir … fest", "lehnen wir … ab",
+#: "ordnen wir … an"): what makes a letter an administrative act (§ 35 VwVfG, § 118 AO, § 31 SGB X). Their past
+#: forms ("setzten") are not here, nor "haben" or "hatten": a decision named in the past is an earlier one. Nor a
+#: verb that takes "mit" for its object ("verrechnen", "vergleichen", "verbinden": the decision is then what
+#: something is set against), nor one that only asks or reminds ("bitten", "erinnern", "mahnen": a reminder names
+#: the earlier letter it repeats).
 _DECISION_VERBS = (
     "entscheiden", "setzen", "lehnen", "bewilligen", "gewähren", "fordern", "erheben", "stellen", "teilen",
     "ändern", "heben", "erstatten", "erlassen", "bestätigen", "weisen", "ordnen", "verpflichten", "untersagen",
     "widerrufen", "nehmen", "berichtigen", "versagen", "entziehen", "erteilen", "genehmigen", "erhöhen",
-    "mindern", "senken", "bitten", "berechnen", "erkennen", "stunden", "bescheiden", "erinnern", "mahnen",
-    "verlängern", "geben",
+    "mindern", "senken", "stunden", "verlängern",
 )  # fmt: skip
 #: The same verbs as a head of office writes them with "ich" ("setze ich", "ändere ich").
 _DECISION_VERBS_I = tuple(verb[:-1] if verb.endswith("en") else f"{verb[:-1]}e" for verb in _DECISION_VERBS)
-#: The English letter's own verbs after "we" ("By decision dated …, we (hereby) refuse …").
-_DECISION_VERBS_EN = (
-    "assess", "set", "fix", "levy", "impose", "grant", "award", "approve", "refuse", "reject", "decide",
-    "determine", "order", "demand", "request", "ask", "revoke", "withdraw", "amend", "confirm", "inform", "notify",
-)  # fmt: skip
-#: The other finite verbs of the forms, in the present tense: the passive's auxiliary ("wird", "werden", English
-#: "is", "are"), "ergeht / ergehen" (issued now) and "erhalten" (only with "Sie": "… erhalten Sie die Abrechnung").
-#: No past or perfect form ("wurde", "hatten", "haben", "ist … worden", "was"): that is an earlier act.
-_AUXILIARIES = frozenset({"wird", "werden", "is", "are"})
-_ISSUED = frozenset({"ergeht", "ergehen"})
-_RECEIVED = frozenset({"erhalten"})
-#: The clause-final participles of the passive form with the verb before "mit" ("Die Gebühr wird mit Bescheid vom
-#: … festgesetzt"), and of English "… is hereby assessed". Uninflected only: an inflected one ("festgesetzte",
-#: "bewilligten") makes the date part of a thing named, an earlier decision's. Never one whose verb takes "mit" for
-#: its object ("verrechnet", "verbunden", "aufgerechnet"). A word that is also a finite verb ("erlassen",
-#: "widerrufen", "erhalten", "set") is left out: every word has one class.
-_PARTICIPLES = frozenset({
-    "festgesetzt", "erhoben", "bewilligt", "gewährt", "abgelehnt", "zurückgewiesen", "angeordnet", "erteilt",
-    "zurückgefordert", "aufgehoben", "geändert", "erstattet",
-    "assessed", "fixed", "levied", "imposed", "granted", "refused", "rejected",
-})  # fmt: skip
-#: Articles: they govern the noun after them.
-_ARTICLES = frozenset({"der", "die", "das", "den", "dem", "des", "ein", "eine", "the"})
-#: The prepositions a passive form's words after the date may hold ("auf 80,00 EUR", "für das Jahr 2026", "in Höhe
-#: von", "unter Vorbehalt"). No other: "aus", "gegen", "durch", "ohne", "statt", "wie" … open a thing named or
-#: compared.
-_PREPOSITIONS = frozenset({"auf", "für", "in", "im", "von", "unter"})
-#: Adverbs a form allows: "Hiermit wird …", "… wird nunmehr mit Bescheid vom …", English "Hereby, by decision …",
-#: "we hereby …", "… is hereby …".
-_ADVERBS = frozenset({"hiermit", "nunmehr", "hereby", "herewith"})
-#: The authority speaking ("setzen wir", "lehne ich", "we refuse") and the reader addressed ("erhalten Sie", "Ihnen
-#: wird …"). Never "Ihr", "Ihrem", "unser…": a possessive names someone's letter or decision; nor "Sie" after a
-#: decision verb ("Mit Schreiben vom … teilen Sie mit": the reader's own letter).
-_SPEAKERS = frozenset({"wir", "ich", "we"})
-_ADDRESSEES = frozenset({"sie", "ihnen"})
-#: The decision the cue names: a "Bescheid" of any kind ("Gebührenbescheid", "Änderungsbescheid"), a "Schreiben",
-#: an English "decision" or "notice".
-_DECISION_NOUNS = frozenset({"schreiben", "decision", "notice"})
-#: The English nouns "the … is / are hereby assessed" may have for its subject.
-_NOUNS_EN = frozenset({"fee", "fees", "tax", "amount"})
-_CURRENCY = frozenset({"eur", "euro", "€"})
-#: A file number's label, in an aside between the date and its verb ("…, Az. 32-117/2026, wird …").
-_FILE_LABELS = frozenset({"az", "gz", "aktenzeichen", "geschäftszeichen", "kassenzeichen"})
-#: The last word of every cue, right before its date: checked before a sentence is split into words.
-_CUE_END = re.compile(r"\b(?:vom|dated|of)\s*$", re.IGNORECASE)
-#: The words of a sentence: a bracket read whole, an amount ("80,00"), a number or a file number ("32-117/2026"), a
-#: word, or one sign.
-_TOKEN = re.compile(
-    r"\((?P<bracket>[^()\n]*)\)"
-    r"|(?P<amount>\d{1,3}(?:\.\d{3})+,\d{2}|\d+,\d{2})(?!\d)"
-    r"|(?P<code>(?:[^\W_]+[/-])*[^\W_]*\d[^\W_]*(?:[/-][^\W_]+)*)"
-    r"|(?P<word>[^\W\d_]+(?:-[^\W\d_]+)*)"
-    r"|(?P<sign>[^\w\s])"
-)
+#: Each speaker with its own verb forms ("setzen wir", "setze ich"). Never "Sie" ("Mit Schreiben vom … teilen Sie
+#: mit": the reader's own letter) nor a third person ("setzt die Stadt"): that tells what someone else does.
+_SPEAKER_VERBS = {"wir": frozenset(_DECISION_VERBS), "ich": frozenset(_DECISION_VERBS_I)}
+#: The verb and its speaker, right after the date ("… vom 09.06.2026 setzen wir").
+_OWN_VERB = re.compile(r"\s+(?P<verb>[^\W\d_]+)\s+(?P<speaker>[^\W\d_]+)\b")
+#: A line that ends in a date or a number ("Vorauszahlungen 02.03.2026", "· Datum: 02.03.2026"): its words before
+#: that value, and the value (:func:`_field_line`).
+_VALUE_ENDS_LINE = re.compile(r"(?P<words>[^\n]*?)[ \t]*\d[\d./-]*[ \t]*\n[ \t]*$")
 #: Where a sentence ends: a full stop, "!", "?" or ";" before a capital letter or an opening quote.
 _SENTENCE_END = re.compile(r"[.!?;]\s+(?=[A-ZÄÖÜ\"(])")
 #: A label's colon ("Rechnungsdatum: …", "Total due: …"), not a time's ("10:00").
@@ -691,280 +651,74 @@ def _relative_deadline(clause: str, grounding: Grounding) -> list[_Statement]:
     return found
 
 
-@dataclass(frozen=True)
-class _Token:
-    """One word of a sentence (:data:`_TOKEN`): its text, where it starts in the sentence, and its ONE class."""
-
-    text: str
-    start: int
-    kind: str
-
-    @property
-    def word(self) -> str:
-        return self.text.casefold()
-
-
-def _kind(match: re.Match[str]) -> str:
-    """A word's one class (:data:`_TOKEN`, the closed lists above); ``other`` when no list has it."""
-    text = match.group()
-    if match.group("bracket") is not None:
-        return "bracket"
-    if match.group("amount"):
-        return "amount"
-    if match.group("code"):
-        return "number" if text.isdigit() else "code"
-    word = text.casefold()
-    if word in _CURRENCY:
-        return "currency"
-    if match.group("sign"):
-        return "comma" if text == "," else "sign"
-    for kind, words in (
-        ("article", _ARTICLES),
-        ("preposition", _PREPOSITIONS),
-        ("adverb", _ADVERBS),
-        ("speaker", _SPEAKERS),
-        ("addressee", _ADDRESSEES),
-        ("verb", frozenset({*_DECISION_VERBS, *_DECISION_VERBS_I, *_DECISION_VERBS_EN})),
-        ("auxiliary", _AUXILIARIES),
-        ("issued", _ISSUED),
-        ("received", _RECEIVED),
-        ("participle", _PARTICIPLES),
-        ("label", _FILE_LABELS),
-    ):
-        if word in words:
-            return kind
-    if word in _DECISION_NOUNS or word.endswith("bescheid"):
-        return "decision"
-    if word in _NOUNS_EN or text[0].isupper():
-        return "noun"
-    return "other"
-
-
-def _tokens(text: str) -> list[_Token]:
-    """The words of ``text``, each with its one class (:func:`_kind`)."""
-    return [_Token(match.group(), match.start(), _kind(match)) for match in _TOKEN.finditer(text)]
+def _field_line(before: str) -> bool:
+    """Whether the line just above (``before`` ends with it and its line break) is a table's row or a header's field,
+    not a sentence's: it ends in a date or a number, and the words before that value are a label with its colon
+    ("Bescheid über Vorauszahlungen · Datum: 02.03.2026") or capitalised words and numbers only ("Vorauszahlungen
+    02.03.2026", a row of a table). A sentence broken right after a date or a number ("Ihren Widerspruch gegen den
+    Bescheid vom 02.06.2026", "Ihre Zahlung zum Kassenzeichen 4711") has lower-case words that tie the next line to
+    it: the words before "mit" then decide whose date it is, and the form has no place for them."""
+    value = _VALUE_ENDS_LINE.search(before)
+    if value is None:
+        return False
+    words = value["words"].rsplit("\n", 1)[-1].split()
+    return bool(words) and (
+        words[-1].endswith(":") or all(word[:1].isupper() or word[:1].isdigit() for word in words)
+    )
 
 
 def _opens(before: str, first: str) -> bool:
     """Whether a form whose first word is ``first`` opens its sentence (``before``: the sentence's text before it):
-    at the sentence's start; at a line's start with a capital ("Gebührenbescheid" over "Mit Bescheid vom …"), or
-    under a line that ends in a date or a number (a header's field or a table's row, no sentence's words); or right
-    after a salutation's comma ("Sehr geehrte Frau Beispiel,\\nmit Bescheid vom …"). Anywhere else the words before
-    it decide whose date it is ("Nach Anhörung\\nmit Schreiben vom …"), and a form has no place for them."""
+    at the sentence's start; at a line's start with a capital ("Gebührenbescheid" over "Mit Bescheid vom …"), or in
+    lower case under a table's row or a header's field (:func:`_field_line`); or right after a salutation's comma
+    ("Sehr geehrte Frau Beispiel,\\nmit Bescheid vom …"). Anywhere else the words before it decide whose date it is
+    ("Nach Anhörung\\nmit Schreiben vom …"), and the form has no place for them."""
     tail = before[-_CUE_REACH:]  # only the words just before it decide (and a long line stays fast)
     if not tail.strip():
         # a capital after a line break opens its sentence; the line above is too far back to read
         return not before.strip() or (first[:1].isupper() and "\n" in tail)
-    before = tail
-    if re.search(r"\n[ \t]*$", before) and (first[:1].isupper() or re.search(r"\d[ \t]*\n[ \t]*$", before)):
+    if re.search(r"\n[ \t]*$", tail) and (first[:1].isupper() or _field_line(tail)):
         return True
-    line = re.search(r"([^\n]*),[ \t]*\n?[ \t]*$", before)
+    line = re.search(r"([^\n]*),[ \t]*\n?[ \t]*$", tail)
     return bool(line and _SALUTATION.match(line.group(1).strip()))
 
 
-def _aside(tokens: list[_Token], at: int) -> int:
-    """Where the words after a file number or a bracket standing at ``at`` go on ("…, Az. 32-117/2026, wird …",
-    "… (Kassenzeichen 4711) wird …"): a file number's label, its number, and nothing else. ``at`` when none."""
-    if at < len(tokens) and tokens[at].kind == "bracket":
-        inner = _tokens(tokens[at].text[1:-1])
-        return at + 1 if _file_number(inner, 0) == len(inner) else at
-    if at < len(tokens) and tokens[at].kind == "comma":
-        end = _file_number(tokens, at + 1)
-        if end > at + 1 and end < len(tokens) and tokens[end].kind == "comma":
-            return end + 1
-    return at
+def _own_decision(clause: str, start: int, end: int) -> int | None:
+    """Where the words start that name the date at ``clause[start:end]`` the date of this letter's own decision, or
+    ``None``. One form counts, backed by the rows of the tests' ``FORMS_THAT_COUNT``: the sentence opens
+    (:func:`_opens`) with "Mit (dem) Bescheid vom" or "Mit (dem) Schreiben vom" (:data:`_OWN_CUE`), and right after
+    the date stands a listed decision verb in the present tense with its speaker (:data:`_SPEAKER_VERBS`): "Mit
+    Bescheid vom … setzen wir … fest", "… lehne ich … ab". German puts the finite verb right after a phrase that
+    opens the sentence, so the phrase belongs to that verb's clause, and the first person in the present tense is
+    the authority acting by that decision now.
 
-
-def _file_number(tokens: list[_Token], at: int) -> int:
-    """Where a file number starting at ``at`` ends: an optional label ("Az.", "Kassenzeichen:"), then one
-    number. ``at`` when there is none."""
-    index = at
-    if index < len(tokens) and tokens[index].kind == "label":
-        index += 1
-        while index < len(tokens) and tokens[index].text in ".:":
-            index += 1
-    if index < len(tokens) and tokens[index].kind in ("number", "code"):
-        return index + 1
-    return at
-
-
-#: What may follow what between the date and the clause-final participle of the passive form with its verb before
-#: "mit" ("Die Gebühr wird mit Bescheid vom … für das Jahr 2026 auf 80,00 EUR festgesetzt."): a noun only where an
-#: article or a listed preposition governs it, a currency only after its amount, and the participle last.
-_PASSIVE_STEPS: dict[str, frozenset[str]] = {
-    "date": frozenset({"article", "preposition", "number", "amount", "participle"}),
-    "article": frozenset({"noun"}),
-    "preposition": frozenset({"article", "noun", "number", "amount"}),
-    "noun": frozenset({"preposition", "number", "participle"}),
-    "number": frozenset({"preposition", "currency", "participle"}),
-    "amount": frozenset({"currency"}),
-    "currency": frozenset({"preposition", "participle"}),
-}
-
-
-@dataclass(frozen=True)
-class _Own:
-    """A form that names a date as this letter's own decision's: its name and where its words start."""
-
-    form: str
-    start: int
-
-
-def _cue(head: list[_Token]) -> tuple[str, int] | None:
-    """The cue right before the date and where it starts: "mit (dem) Bescheid / Schreiben vom" (``mit``), "der
-    Bescheid vom" (``der``), "by / with (our / the) decision / notice dated / of" (``english``)."""
-    words = [token.word for token in head[-5:]]
-    if len(words) >= 3 and words[-1] == "vom" and head[-2].kind == "decision":
-        at = len(head) - 3
-        if words[-3] == "der" and head[-2].word != "schreiben":
-            return "der", at
-        if words[-3] == "dem":
-            at -= 1
-        if at >= 0 and head[at].word == "mit":
-            return "mit", at
+    Everything else does not count (the letter's other dates still do, its header's first of all). Recall is given
+    up on purpose: "Mit Bescheid vom … wird / werden / ergeht / erhalten Sie …", "Der Bescheid vom … ergeht …", "Die
+    Gebühr wird mit Bescheid vom … festgesetzt", "Hiermit setzen wir mit Bescheid vom … fest", a compound
+    ("Mit Änderungsbescheid vom …"), a file number between the date and the verb, and every English wording leave
+    the letter's date as read."""
+    reach = max(0, start - _CUE_REACH)
+    cue = _OWN_CUE.search(clause[reach:start])
+    if cue is None:
         return None
-    if len(words) >= 3 and words[-1] in ("dated", "of") and head[-2].word in ("decision", "notice"):
-        at = len(head) - 3
-        if head[at].word in ("our", "the"):
-            at -= 1
-        if at >= 0 and head[at].word in ("by", "with"):
-            return "english", at
-    return None
-
-
-def _own_decision(clause: str, start: int, end: int, stop: int) -> _Own | None:
-    """The form, if any, that names the date at ``clause[start:end]`` the date of this letter's own decision (``stop``:
-    where the next date starts, or the sentence's end). Only these forms count, each a sequence of the closed
-    classes above, and each backed by rows of the tests' ``FORMS_THAT_COUNT``; a word of no listed class in any of
-    a form's places refuses it, and everything else does not count (the letter's other dates still do, its header's
-    first of all). Recall is given up on purpose: "Hiermit setzen wir mit Bescheid vom … fest", "In the notice of …"
-    and every other wording outside the forms leave the letter's date as read:
-
-    1. ``mit-verb`` — the sentence opens with "Mit (dem) Bescheid vom" (or a "…bescheid", or "Schreiben") and the
-       finite present-tense verb stands right after the date, with only a file number or a bracket between: "Mit
-       Bescheid vom … setzen wir … fest", "… lehne ich …", "… wird / werden …", "… ergeht / ergehen …", "… erhalten
-       Sie …"; after "Schreiben" only a decision verb with "wir" or "ich", or "erhalten Sie" (a passive "Mit
-       Schreiben vom … wird …" can tell what someone else's letter did). German puts the finite verb right after a
-       phrase that opens the sentence, so the phrase belongs to that verb's clause, not to a noun.
-    2. ``der-ergeht`` — "Der Bescheid vom … ergeht …" opening its sentence: issued now.
-    3. ``english`` — the sentence opens with "By / With (our / the) decision / notice dated / of …" (or "Hereby, by
-       …"), then "(,) we (hereby) <verb> …" or "(,) the fee / tax / … is / are hereby assessed / fixed / …". Never
-       after "In" or any other word: those name a notice the sentence refers to, compares with or corrects.
-    4. ``verb-mit`` — the passive with its verb before "mit": "<article> <noun> wird / werden", "Hiermit wird /
-       werden" or "Ihnen wird / werden" opening the sentence, then at most "hiermit", "nunmehr" or "Ihnen", then
-       "mit (dem) Bescheid vom …", then only listed prepositions, articles, numbers, amounts and the nouns they
-       govern, and last a listed uninflected participle ending the sentence: "Die Gebühr wird mit Bescheid vom …
-       auf 80,00 EUR festgesetzt." An inflected participle or an adjective there ("… festgesetzte Steuer", "…
-       vorläufig bewilligte Leistungen") makes the date part of a thing named, an earlier decision's.
-    """
-    if not _CUE_END.search(clause, max(0, start - 12), start):
+    begins = reach + cue.start()
+    if (begins and clause[begins - 1].isalnum()) or not _opens(clause[:begins], cue.group()):
         return None
-    reach = max(
-        0, start - 2 * _CUE_REACH
-    )  # the cue and a passive's opening words; a cut first word is dropped
-    head = [replace(token, start=token.start + reach) for token in _tokens(clause[reach:start])][
-        1 if reach else 0 :
-    ]
-    found = _cue(head)
-    if found is None:
+    after = _OWN_VERB.match(clause, end)
+    if after is None or after["verb"].casefold() not in _SPEAKER_VERBS.get(after["speaker"].casefold(), ()):
         return None
-    cue, at = found
-    tail = _tokens(clause[end:stop])
-    ends = stop >= len(clause.rstrip())  # the tail runs to the sentence's end, not to another date
-    first = head[at]
-    before = clause[: first.start]
-    if cue == "der":
-        issued = _opens(before, first.text) and _follows(tail, _aside(tail, 0), "issued") > 0
-        return _Own("der-ergeht", first.start) if issued else None
-    if cue == "english":
-        opened = (
-            _opens(before, first.text)
-            or (  # "Hereby, by decision dated …"
-                at >= 2
-                and _follows(head, at - 2, "adverb comma") == at
-                and _opens(clause[: head[at - 2].start], head[at - 2].text)
-            )
-        )
-        return _Own("english", first.start) if opened and _english_after(tail) else None
-    if _opens(before, first.text) and _verb_after(tail, schreiben=head[-2].word == "schreiben"):
-        return _Own("mit-verb", first.start)
-    if head[-2].word != "schreiben" and _passive_lead(clause, head[:at]) and _passive_after(tail, ends=ends):
-        return _Own("verb-mit", first.start)
-    return None
-
-
-def _follows(tokens: list[_Token], at: int, *patterns: str) -> int:
-    """Where the words from ``at`` end that follow one of ``patterns`` (classes in order, "kind?" optional), tried
-    in turn; -1 when none does."""
-    for pattern in patterns:
-        index = at
-        for step in pattern.split():
-            if index < len(tokens) and tokens[index].kind == step.rstrip("?"):
-                index += 1
-            elif not step.endswith("?"):
-                break
-        else:
-            return index
-    return -1
-
-
-def _verb_after(tail: list[_Token], *, schreiben: bool) -> bool:
-    """Form 1's words after the date: (a file number or a bracket, then) the finite verb — a decision verb with its
-    speaker ("setzen wir", "lehne ich"), "erhalten Sie", and after a "Bescheid" also "wird / werden / ergeht /
-    ergehen"."""
-    patterns = (
-        ("verb speaker", "received addressee")
-        if schreiben
-        else ("verb speaker", "received addressee", "auxiliary", "issued")
-    )
-    return _follows(tail, _aside(tail, 0), *patterns) > 0
-
-
-def _english_after(tail: list[_Token]) -> bool:
-    """Form 3's words after the date: "(,) we (hereby) <verb>" or "(,) the <noun> is / are hereby <participle>"."""
-    return (
-        _follows(tail, 0, "comma? speaker adverb? verb", "comma? article noun auxiliary adverb participle")
-        > 0
-    )
-
-
-def _passive_lead(clause: str, lead: list[_Token]) -> bool:
-    """Form 4's words before "mit", opening the sentence: "<article> <noun> wird / werden", "Hiermit wird /
-    werden" or "Ihnen wird / werden", then at most one more adverb ("hiermit", "nunmehr") or "Ihnen"."""
-    for at in range(max(0, len(lead) - 4), len(lead)):
-        if _opens(clause[: lead[at].start], lead[at].text) and len(lead) in (
-            _follows(lead, at, f"{opener} auxiliary {after}")
-            for opener in ("article noun", "adverb", "addressee")
-            for after in ("adverb", "addressee", "")
-        ):
-            return True
-    return False
-
-
-def _passive_after(tail: list[_Token], *, ends: bool) -> bool:
-    """Form 4's words after the date (:data:`_PASSIVE_STEPS`): ending with a listed participle that ends the
-    sentence."""
-    state = "date"
-    for index, token in enumerate(tail):
-        if token.kind not in _PASSIVE_STEPS[state]:
-            return False
-        if token.kind == "participle":
-            rest = [other.text for other in tail[index + 1 :]]
-            return rest in ([], ["."], ["!"], [";"], [":"]) and (ends or bool(rest))
-        state = token.kind
-    return False
+    return begins
 
 
 def _letter_dates(clause: str, dates: list[tuple[int, int, date]], grounding: Grounding) -> list[_Statement]:
     """Dates the letter gives for itself ("Mit diesem Bescheid vom 06.04.2027 setzen wir …", :func:`_own_decision`)."""
     found = []
-    for index, (start, end, day) in enumerate(dates):
+    for start, end, day in dates:
         before = clause[max(0, start - _CUE_REACH) : start]
-        stop = dates[index + 1][0] if index + 1 < len(dates) else len(clause)
         if (cue := _SELF_DATE.search(before)) is not None:
             begins = start - len(before) + cue.start()
-        elif (own := _own_decision(clause, start, end, stop)) is not None:
-            begins = own.start
+        elif (own := _own_decision(clause, start, end)) is not None:
+            begins = own
         else:
             continue
         phrase = clause[begins:end].strip()
