@@ -326,6 +326,13 @@ _MIT_AS_OBJECT = re.compile(
 #: geändert mit Bescheid vom …"): a phrase set off by commas that names an earlier decision, also when the scan
 #: lost the comma after its date.
 _INSERTED_PHRASE = re.compile(r",\s*(?:[a-zäöüß]\w*\s+)*?[a-zäöüß]\w*(?:t|en)\s*$")
+#: An English letter reporting what an earlier letter said ("As announced in our letter of …, we hereby …", "the
+#: points set out in our letter of …"): that letter's date, not this one's.
+_REPORTED_LEAD = re.compile(
+    r"\bas\b|\b(?:announced|stated|set\s+out|mentioned|explained|informed|described|indicated|notified"
+    r"|outlined|referred\s+to)\s*$",
+    re.IGNORECASE,
+)
 #: Words of an earlier time or a reference between the verb and "mit Bescheid vom …" ("Der Betrag wird nach
 #: Bezugnahme auf …", "… wird unter Hinweis auf …"), or a past auxiliary: not this letter's decision.
 _EARLIER = re.compile(
@@ -726,7 +733,7 @@ def _own_decision(before: str, after: str) -> re.Match[str] | None:
     if cue is None:
         return None
     lead = re.split(r"[,;:]", before[: cue.start()])[-1]  # the clause's words before "mit"
-    if _NOT_OWN_LEAD.search(lead):
+    if _NOT_OWN_LEAD.search(lead) or _REPORTED_LEAD.search(lead):
         return None
     if _INSERTED_PHRASE.search(before[: cue.start()]) and not _FINITE_BEFORE.search(lead):
         return None

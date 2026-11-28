@@ -1572,6 +1572,15 @@ ANOTHER_DECISIONS_DATE = [
         id="participle-phrase-its-closing-comma-lost",
     ),
     pytest.param("By our decision dated 9 June 2026 we granted the benefit.", id="en-past"),
+    pytest.param(
+        "As announced in our letter of 9 June 2026, we hereby revoke the permit.", id="en-as-announced"
+    ),
+    pytest.param("As set out in our letter of 9 June 2026, we hereby request payment.", id="en-as-set-out"),
+    pytest.param("As we wrote in our letter of 9 June 2026, we hereby request payment.", id="en-as-we-wrote"),
+    pytest.param(
+        "Further to the points set out in our letter of 9 June 2026, we hereby request payment.",
+        id="en-reported-without-as",
+    ),
     pytest.param("Our decision of 9 June 2026 is hereby revoked.", id="en-revoked"),
     pytest.param(
         "By decision dated 9 June 2026, which is hereby amended, the fee was set.", id="en-relative-clause"
