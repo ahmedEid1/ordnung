@@ -302,7 +302,9 @@ _FINITE_BEFORE = re.compile(rf"\b(?:wird|werden|{_PRESENT})\b", re.IGNORECASE)
 _NOT_OWN_LEAD = re.compile(
     r"\b(?:der|die|das|dem|den|des|deren|dessen|wie|laut|gemäß|entsprechend|bereits|schon|zuvor|zuletzt"
     r"|ursprünglich|seinerzeit|damals|bisher|früher|zusammen|gemeinsam|verbindung|einklang|vergleich"
-    r"|verglichen|übereinstimmung|the|as|already|previously|which|that|together|along)\s*$",
+    r"|verglichen|übereinstimmung|the|as|already|previously|which|that|together|along)\s*$"
+    # An article with a pronoun ("die Ihnen mit Bescheid vom … erteilte Erlaubnis"): the same thing named.
+    r"|\b(?:der|die|das|dem|den|des)\s+(?:ihnen|ihr|ihm|euch|uns|dir|mir)\s*$",
     re.IGNORECASE,
 )
 #: A noun right before a "mit Bescheid vom …" inside the sentence ("Ihr Widerspruch mit Schreiben vom …", "Ihrem
@@ -333,9 +335,18 @@ _EARLIER = re.compile(
     re.IGNORECASE,
 )
 #: A participle used as an adjective right after the date ("mit Bescheid vom … festgesetzten Beträge", "…
-#: bewilligte Leistungen", "… erlassenen"): the date belongs to a decision named as a thing, an earlier one.
-#: Lower case only: a noun ("Kosten") is not one.
-_ATTRIBUTE_AFTER = re.compile(r"^\s*[a-zäöüß]\w*(?:t|en)(?:e|en|er|es|em)\b")
+#: bewilligte Leistungen", "… erlassenen"), or after one adverb ("… befristet erteilte Erlaubnis", "… vorläufig
+#: bewilligte Leistungen"): the date belongs to a decision named as a thing, an earlier one. Lower case only: a
+#: noun ("Kosten") is not one. Prepositions and adverbs that end like one ("unter Vorbehalt", "später", "weiter")
+#: are not participles, and a preposition opens a phrase of its own ("im beantragten Umfang bewilligt").
+_NOT_A_PARTICIPLE = r"(?:unter|hinter|weiter|später|unten|hinten|oben|innen|außen|selten|mitten)\b"
+_PREPOSITION = (
+    r"(?:im|in|am|an|auf|aus|bei|für|gegen|mit|nach|von|vom|zum|zur|zu|über|um|ab|bis|ohne|durch|gemäß|unter"
+    r"|der|die|das|den|dem|des|ein|eine|einen|einem|einer|eines)\b"
+)
+_ATTRIBUTE_AFTER = re.compile(
+    rf"^\s*(?:(?!{_PREPOSITION})[a-zäöüß]\w*\s+)?(?!{_NOT_A_PARTICIPLE})[a-zäöüß]\w*(?:t|en)(?:e|en|er|es|em)\b"
+)
 #: Where a sentence ends: a full stop, "!", "?" or ";" before a capital letter or an opening quote.
 _SENTENCE_END = re.compile(r"[.!?;]\s+(?=[A-ZÄÖÜ\"(])")
 #: A label's colon ("Rechnungsdatum: …", "Total due: …"), not a time's ("10:00").

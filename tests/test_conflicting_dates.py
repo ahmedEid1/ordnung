@@ -1421,6 +1421,13 @@ A_DECISION_NAMING_ITS_OWN_DATE = [
         "Mit Bescheid vom 09.06.2026 wird die Nachzahlung mit dem Guthaben aufgerechnet.",
         id="aufgerechnet-against-something-else",
     ),
+    pytest.param(
+        "Die Gebühr wird mit Bescheid vom 09.06.2026 unter Vorbehalt festgesetzt.", id="unter-vorbehalt"
+    ),
+    pytest.param(
+        "Die Leistung wird mit Bescheid vom 09.06.2026 im beantragten Umfang bewilligt.",
+        id="participle-in-a-phrase-of-its-own",
+    ),
 ]
 
 
@@ -1526,6 +1533,26 @@ ANOTHER_DECISIONS_DATE = [
     pytest.param("Wir verrechnen das Guthaben mit dem Bescheid vom 09.06.2026.", id="wir-verrechnen"),
     pytest.param(
         "Mit Bescheid vom 09.06.2026 verrechnen wir das Guthaben.", id="verrechnen-wir-after-the-date"
+    ),
+    pytest.param(
+        "Hiermit wird die Ihnen mit Bescheid vom 09.06.2026 befristet erteilte Erlaubnis widerrufen.",
+        id="pronoun-and-adverb-attribute",
+    ),
+    pytest.param(
+        "Hiermit widerrufen wir die Ihnen mit Bescheid vom 09.06.2026 unbefristet erteilte Erlaubnis.",
+        id="pronoun-and-adverb-attribute-verb-first",
+    ),
+    pytest.param(
+        "Hiermit wird der Ihnen mit Bescheid vom 09.06.2026 zuletzt bewilligte Betrag zurückgefordert.",
+        id="pronoun-and-zuletzt-attribute",
+    ),
+    pytest.param(
+        "Hiermit wird die Ihnen mit Bescheid vom 09.06.2026 im Umfang von 80,00 EUR erteilte Erlaubnis widerrufen.",
+        id="pronoun-before-mit",
+    ),
+    pytest.param(
+        "Hiermit werden mit Bescheid vom 09.06.2026 vorläufig bewilligte Leistungen endgültig festgesetzt.",
+        id="adverb-before-the-attribute",
     ),
     pytest.param("Mit unserem Bescheid vom 09.06.2026 setzen wir die Steuer fest.", id="unserem"),
     pytest.param(
