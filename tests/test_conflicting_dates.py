@@ -1417,6 +1417,10 @@ A_DECISION_NAMING_ITS_OWN_DATE = [
     pytest.param(
         "Mit Bescheid vom 09.06.2026, Az. 32-117/2026, wird die Gebühr festgesetzt.", id="file-number-aside"
     ),
+    pytest.param(
+        "Mit Bescheid vom 09.06.2026 wird die Nachzahlung mit dem Guthaben aufgerechnet.",
+        id="aufgerechnet-against-something-else",
+    ),
 ]
 
 
@@ -1516,6 +1520,12 @@ ANOTHER_DECISIONS_DATE = [
     ),
     pytest.param(
         "Nach Anhörung mit Schreiben vom 09.06.2026 setzen wir die Gebühr fest.", id="hearing-setzen-wir"
+    ),
+    pytest.param("Das Guthaben wird mit dem Bescheid vom 09.06.2026 verrechnet.", id="verrechnet-mit-dem"),
+    pytest.param("Die Erstattung wird mit Bescheid vom 09.06.2026 verrechnet.", id="verrechnet"),
+    pytest.param("Wir verrechnen das Guthaben mit dem Bescheid vom 09.06.2026.", id="wir-verrechnen"),
+    pytest.param(
+        "Mit Bescheid vom 09.06.2026 verrechnen wir das Guthaben.", id="verrechnen-wir-after-the-date"
     ),
     pytest.param("Mit unserem Bescheid vom 09.06.2026 setzen wir die Steuer fest.", id="unserem"),
     pytest.param(

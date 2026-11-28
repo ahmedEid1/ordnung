@@ -258,7 +258,7 @@ _DECISION_VERBS = (
     "ändern", "heben", "erstatten", "erlassen", "bestätigen", "weisen", "ordnen", "verpflichten", "untersagen",
     "widerrufen", "nehmen", "berichtigen", "versagen", "entziehen", "erteilen", "genehmigen", "erhöhen",
     "mindern", "senken", "bitten", "berechnen", "erkennen", "stunden", "bescheiden", "erinnern", "mahnen",
-    "verlängern", "verrechnen", "geben",
+    "verlängern", "geben",
 )  # fmt: skip
 #: The same verbs with "wir" ("setzen wir", "wir setzen") or with "ich", as a head of office writes ("setze
 #: ich", "ändere ich").
@@ -311,6 +311,15 @@ _NOT_OWN_LEAD = re.compile(
 #: letter, not the act of this one. The polite pronouns are no nouns ("Ihnen wird mit Bescheid vom … eine Frist
 #: gesetzt"). Case-sensitive, and only for a lower-case "mit": a capital "Mit" opens the sentence.
 _NOUN_BEFORE = re.compile(r"\b(?!(?:Ihnen|Sie|Ihr|Euch|Dir)\b)[A-ZÄÖÜ]\w*\s+$")
+#: Verbs that take "mit" for their object ("Das Guthaben wird mit dem Bescheid vom … verrechnet", "aufrechnen",
+#: "verbinden", "zusammenführen", "vergleichen", "abstimmen", "abgleichen"): the decision is what something is
+#: set against, so an earlier one — unless that verb has its own "mit" after the date ("Mit Bescheid vom … wird
+#: die Nachzahlung mit dem Guthaben verrechnet": the decision is the means). Lower case: the nouns
+#: ("Vergleich", "Verbindung") are other words.
+_MIT_AS_OBJECT = re.compile(
+    r"\b(?:verrechn|aufrechn|vergleich|abstimm|abgleich)(?:e|en|et|t|ete|eten)\b|\bverbind(?:e|en|et)\b"
+    r"|\b(?:aufgerechnet|verbunden|zusammenführ(?:e|en|t)|zusammengeführt|verglichen|abgestimmt|abgeglichen)\b"
+)
 #: The words before "mit" after a comma, with no finite verb, ending in a participle ("Der Betrag, zuletzt
 #: geändert mit Bescheid vom …"): a phrase set off by commas that names an earlier decision, also when the scan
 #: lost the comma after its date.
@@ -711,6 +720,9 @@ def _own_decision(before: str, after: str) -> re.Match[str] | None:
     if _INSERTED_PHRASE.search(before[: cue.start()]) and not _FINITE_BEFORE.search(lead):
         return None
     if before.startswith("mit", cue.start()) and _NOUN_BEFORE.search(lead):
+        return None
+    rest = re.split(r"[;!?]|\.(?:\s|$)", after)[0]  # the sentence's words after the date
+    if _MIT_AS_OBJECT.search(lead) or (_MIT_AS_OBJECT.search(rest) and not re.search(r"\bmit\b", rest)):
         return None
     if cue.group("issued"):
         return cue if _ISSUED_AFTER.match(after) else None
