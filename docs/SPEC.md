@@ -632,9 +632,11 @@ date of how long something lasts ("gilt bis", "ist bis … gültig", "läuft bis
 "weiter beliefert", "continues until") or a relative clause's ("Unterlagen, die bis … eingehen, …") —
 and for a period counted from the letter a date the letter gives for itself ("mit diesem Bescheid vom
 …"; "mit Bescheid vom …" with the clause's verb in the present tense — "… wird … festgesetzt", "… setzen wir",
-"… ergeht" — never an earlier decision named in the past, as a thing, by reference or to be revoked: "wurde",
-"die (Ihnen) mit Bescheid vom … (befristet) festgesetzte", "Die Gebühr, festgesetzt mit Bescheid vom …, wird …",
-"unter Bezugnahme auf", "der Bescheid vom … wird aufgehoben", "As announced in our letter of …"; nor a thing named
+"… ergeht" — never an earlier decision named in the past, as a thing, compared, replaced, by reference or to be
+revoked: "wurde", "die (Ihnen) mit Bescheid vom … (befristet) festgesetzte", "aus mit Bescheid vom … festgesetzten
+Forderungen", "Die Gebühr, festgesetzt mit Bescheid vom …, wird …", "unter Bezugnahme auf", "anders als / statt
+mit Bescheid vom …", "der Bescheid vom … wird aufgehoben", "As announced in our letter of …", "In accordance with
+the notice dated …", "In connection with our letter of …"; nor a thing named
 by its letter's date, often the person's own ("Ihr Widerspruch mit Schreiben vom …"), nor a decision something is
 offset against ("… mit dem Bescheid vom … verrechnet"); or the
 first "Datum:" / "Date:" label of its header: on the label's line, or right under it on the

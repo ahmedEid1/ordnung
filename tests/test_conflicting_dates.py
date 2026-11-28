@@ -1458,9 +1458,9 @@ def _assert_equal(found: object, expected: object) -> None:
     assert found == expected
 
 
-#: What must never count as the letter's own date: an earlier decision that the letter changes, revokes, refers
-#: to or names in the past; the decision an objection decision rules on; the invoice a reminder names; the
-#: person's own letter.
+#: What must never count as the letter's own date: an earlier decision that the letter changes, revokes, compares
+#: with, replaces, refers to, names as a thing or names in the past; the decision an objection decision rules on;
+#: the invoice a reminder names; the person's own letter. Every such form the docs name is a row here.
 ANOTHER_DECISIONS_DATE = [
     pytest.param("Der Bescheid vom 09.06.2026 wird aufgehoben.", id="revoked"),
     pytest.param("Hiermit heben wir den Bescheid vom 09.06.2026 auf.", id="hiermit-revoked"),

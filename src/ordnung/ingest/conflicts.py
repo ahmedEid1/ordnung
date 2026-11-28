@@ -27,12 +27,14 @@ second statement:
   letter dated …"; "mit Bescheid vom …" when the clause's verb is in the present tense, the letter's own act —
   "… entscheiden wir", "… wird … festgesetzt", "… ergeht", "Die Gebühr wird mit Bescheid vom … festgesetzt",
   "der Bescheid vom … ergeht", "by decision dated … we hereby …": :func:`_own_decision` — never an earlier
-  decision the letter names in the past, as a thing, by reference or to revoke it: "wurde", "hatten wir",
-  "die (Ihnen) mit Bescheid vom … (befristet) festgesetzte Steuer", "Die Gebühr, festgesetzt mit Bescheid vom
-  …, wird …", "unter Bezugnahme auf", "in Abänderung des Bescheides vom …", "der Bescheid vom … wird
-  aufgehoben", "Widerspruch gegen den Bescheid vom …", "As announced in our letter of …"; nor a thing named by
-  its letter's date, often the person's own ("Ihr Widerspruch mit Schreiben vom …", "Nach Anhörung mit
-  Schreiben vom …"), nor a decision something is offset against ("… wird mit dem Bescheid vom … verrechnet");
+  decision the letter names in the past, as a thing, compared, replaced, by reference or to revoke it: "wurde",
+  "hatten wir", "die (Ihnen) mit Bescheid vom … (befristet) festgesetzte Steuer", "aus mit Bescheid vom …
+  festgesetzten Forderungen", "Die Gebühr, festgesetzt mit Bescheid vom …, wird …", "unter Bezugnahme auf", "in
+  Abänderung des Bescheides vom …", "der Bescheid vom … wird aufgehoben", "Widerspruch gegen den Bescheid vom …",
+  "anders als / statt mit Bescheid vom …", "As announced in our letter of …", "In accordance with the notice dated
+  …", "In connection with our letter of …"; nor a thing named by its letter's date, often the person's own ("Ihr
+  Widerspruch mit Schreiben vom …", "Nach Anhörung mit Schreiben vom …"), nor a decision something is offset
+  against ("… wird mit dem Bescheid vom … verrechnet");
   and the first "Datum:" / "Date:" label of its first page's header, :func:`_header_date` — on the label's
   line or right under it on the page, never a "Datum" in its body, a table's, an event's or another decision's, nor a date that reads two ways).
   Only statements that plausibly concern the *same* obligation count:
@@ -747,9 +749,12 @@ def _own_decision(before: str, after: str) -> re.Match[str] | None:
     counts when the clause's finite verb is in the present tense: right after the date ("… setzen wir", "… wird …
     festgesetzt", "… ergeht": :data:`_OWN_DECISION_AFTER`) or before "mit" in the same clause, with the verb at
     its end ("Die Gebühr wird mit Bescheid vom … festgesetzt"). Never a decision named as a thing ("die (Ihnen)
-    mit Bescheid vom … (befristet) festgesetzte Steuer", "… bewilligten Leistungen", "Die Gebühr, festgesetzt
-    mit Bescheid vom …, wird …"), compared or referred to ("wie mit Bescheid vom …", "in Verbindung mit …",
-    "unter Bezugnahme auf …", "As announced in our letter of …"), named in the past ("Mit Bescheid vom … wurde
+    mit Bescheid vom … (befristet) festgesetzte Steuer", "… bewilligten Leistungen", "aus mit Bescheid vom …
+    festgesetzten Forderungen", "Die Gebühr, festgesetzt mit Bescheid vom …, wird …"), compared, replaced or
+    referred to ("wie mit Bescheid vom …", "anders als / statt mit Bescheid vom …", "in Verbindung mit …", "unter
+    Bezugnahme auf …", "As announced in our letter of …", "In accordance with the notice dated …", "In connection
+    with our letter of …"; in English only "By / With / In … notice of" at the head of its clause counts), named
+    in the past ("Mit Bescheid vom … wurde
     / hatten wir …"), revoked ("Hiermit heben wir den Bescheid vom … auf": no "mit" before it) or offset
     against ("… mit dem Bescheid vom … verrechnet"); never a noun's letter ("Ihr Widerspruch mit Schreiben vom
     …", "Nach Anhörung mit Schreiben vom …"): the person's objection or application, a hearing, an invoice."""
