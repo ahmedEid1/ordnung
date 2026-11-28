@@ -78,7 +78,7 @@ computes the **earliest plausible date**, lowers the confidence and says why. Co
 | Payment to a company or person, payer's Land unknown | Uses only nationwide holidays (money is owed at the payer's home, §§ 269, 270 Abs. 4 BGB). |
 | Posting day unknown | Uses the date printed on the letter (the real posting day can only be the same or later). |
 | Letter arrived later than the deemed delivery day | Keeps the earlier deadline; shows the later one as "only if you can show it" (keep the envelope). |
-| Letter says a later posting day than its date | Found on the letter's page in one of a few closed forms that say *this* letter was posted then ("Tag der Aufgabe zur Post: …" starting its line, "Dieser Bescheid wurde am … zur Post gegeben."; any other wording keeps the letter's date): an authority's deemed delivery counts from it — at most 7 days after the letter's date and never after the day it is read — and the receipt names the day, its words and, as the safe date, the deadline from the letter's date (`posting_day_stated`; read only from a photo's transcription: at most `medium`). Two different posting days on the page: the earlier, `low`, "Please check" (`conflicting_dates`). Named only by the reading (as the period's start or among its key facts), or beyond those guards: keeps the letter's date, names the later deadline (none for a day after the day it is read: it can't be the posting day), one level less sure (`medium`). Until ADR 0026 the letter's date was always kept. |
+| Letter says a later posting day than its date | Found on the letter's page in one of a few closed forms that say *this* letter was posted then, in a closed place ("Tag der Aufgabe zur Post: …" starting its line in the first page's letterhead, "Hinweis: Dieser Bescheid wurde am … zur Post gegeben."; any other wording or place keeps the letter's date): an authority's deemed delivery counts from it — at most 7 days after the letter's date and never after the day it is read — and the receipt names the day, its words and, as the safe date, the deadline from the letter's date (`posting_day_stated`; read only from a photo's transcription: at most `medium`). Two different posting days on the page: the earlier, `low`, "Please check" (`conflicting_dates`). Named only by the reading (as the period's start or among its key facts), or beyond those guards: keeps the letter's date, names the later deadline (none for a day after the day it is read: it can't be the posting day), one level less sure (`medium`). Until ADR 0026 the letter's date was always kept. |
 | Letter counts from "today" | Reads it as the letter's date, never the (later) day it is processed (`medium`). |
 | Fine or penal order without the envelope date | Counts from the letter's date — no 4-day fiction, which could be later than a yellow-envelope delivery. |
 | Period counted backwards ("one month before …") on a weekend/holiday | Never moves to a later day + a `safe_date` on the working day before. |
@@ -356,24 +356,34 @@ page (`ingest/posting.py`), never the model alone, and holds it to guards: it is
 earlier posting day the reading names is used as before), not after the day the letter is read, at most 7 days
 after the letter's date (a week covers a weekend with the run of holidays from 24 December to 1 January; beyond
 it a misprint or another letter's date is likelier, and a later start costs more the further it moves), and
-stated for this letter in one of a few closed forms, each written out in the module and each a test: a field — a
-posting label that starts its line (or, by the page's word boxes, its cell in the first page's information block,
-right of the address window and above the salutation), then only a colon, "am" or "ist der", a weekday and the date,
+stated for this letter in one of a few closed forms, each written out in the module and each a test, and only in
+a closed place: only this letter's pages (a later page whose header gives another letter's date ends the reading).
+A field counts only in the first page's letterhead, its lines before the salutation (a page without a salutation
+shows no letterhead: no field): a posting label that starts its line and opens a field there (in the information
+block by the word boxes, or with a capital under a line that is empty or ends in a full stop, a colon, a date or a
+number — never under a line of prose that runs on into it), or, by the boxes, its cell in the information block,
+right of the address window and above the salutation; then only a colon, "am" or "ist der", a weekday and the date,
 and nothing after it; or the label over its date, the date right under it on the page, the last thing on its row
-(without word boxes, a photo's transcript: a label alone on its line over a date alone on its line) — or a whole
-sentence that this letter was posted: "Dieser / Der Bescheid", "Dieses / Das Schreiben", "Dieser / Der Brief",
-"Dieser Widerspruchsbescheid" and a few such compounds, then "wurde am … zur Post gegeben / der Post übergeben /
-versandt" (or "ist am … worden"), "Die Aufgabe zur Post erfolgte am …", "Zur Post gegeben am …", "This letter was
-posted on …". A word a form does not list refuses it — unknown means no: an adjective or a phrase in the subject
-("der ursprüngliche Bescheid", "der Bescheid für 2024"), a sentence that opens with its verb or goes on after its
-form (a supposition: "Wurde der Bescheid am … zur Post gegeben, so …"), "Wenn", "Bei", "Beispiel:", "erneut",
-"spätestens", "per E-Mail", the present "erfolgt am" (which may be a plan), a label after other words in its line.
-Every other wording does not count: the letter's date stays the start, the early side. Only for an authority's
+(without word boxes, a photo's transcript: a label alone on its line over a date alone on its line). A sentence
+counts only right under a notice's heading that starts its line ("Hinweis:", "Bitte beachten Sie:", "Vermerk:"):
+"Dieser Bescheid", "Dieses Schreiben", "Dieser Brief", "Dieser Widerspruchsbescheid" and a few such compounds, then
+"wurde am … zur Post gegeben / der Post übergeben / versandt" (or "ist am … worden"), "This letter was posted on
+…". A word a form does not list refuses it — unknown means no: plain "Der Bescheid" or "Das Schreiben" (another
+decision's, an example's), a form without a subject ("Die Aufgabe zur Post erfolgte am …"), an adjective or a
+phrase in the subject ("dieser Bescheid für 2024"), a sentence that opens with its verb or goes on after its form
+(a supposition: "Wurde der Bescheid am … zur Post gegeben, so …"), "Wenn", "Bei", "Beispiel:", "erneut",
+"spätestens", "per E-Mail", the present "erfolgt am" (which may be a plan), a label after other words in its line,
+a field in the body, the remedy notice or a table (an example's, a date to post by), a sentence anywhere but under
+a heading (a worked example in whole sentences). Every other wording does not count: the letter's date stays the
+start, the early side. Known gap, on purpose: a letter without a salutation (some tax assessments) never gets the
+field path, and a notice without a listed heading never gets the sentence path; both keep the letter's date. Only for an authority's
 deemed delivery by post, counted forward (never a company's period from arrival, a declaration under private law —
 a dismissal, a landlord's notice, a rent increase, an operating-cost statement, a contract's, an insurer's, an
 employer's, a lease's or a bank's letter: from arrival, § 130 BGB, also from a public body —, a fine's or a court's
-formal service, a letter served with a Rückschein or an Empfangsbekenntnis: from the receipt it proves, § 4 Abs. 2
-S. 1 and § 5 VwZG — a plain Einschreiben counts from its posting, § 4 Abs. 2 S. 2 VwZG —, a letter whose
+formal service, a letter its page says is served formally — by Postzustellungsurkunde ("PZU", § 3 VwZG,
+§§ 177 ff. ZPO), with a Rückschein or an Empfangsbekenntnis ("gegen EB"), under § 3 or § 5 VwZG, the ZPO's service
+sections or a Land's service law: from that service, § 4 Abs. 2 S. 1 and § 5 VwZG — a plain Einschreiben counts
+from its posting, on the fourth day after it, § 4 Abs. 2 S. 2 VwZG —, a letter whose
 sender's law is unknown, an e-mailed decision, or a period counted back). The receipt names the posting day and its
 words (`posting_day_stated`), and gives the deadline from the letter's date as the safe date (that count's own safe
 date where it ends on a weekend): acting by it is on time even if the printed posting day were wrong. Two different

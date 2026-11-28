@@ -26,21 +26,28 @@ the model names is a reading; one that code finds on the letter's own page is th
 ## Decision
 **Code reads the posting day on the page** (`ingest/posting.py`, `posting_statement`, no model call), in closed
 forms only. Each form names what may stand in every place, from a closed list written in the code, and a word it
-does not list refuses it: unknown means no. The module's docstring names the forms that count, and each is a test:
+does not list refuses it: unknown means no. Where a form may stand is closed the same way: fields only in the first
+page's letterhead (its lines before the salutation; a page without a salutation shows no letterhead, so no field), a
+sentence only right under a notice's heading, and only this letter's pages (a later page whose header gives another
+letter's date ends the reading). The module's docstring names the forms that count, and each is a test:
 
 - a field beside its label: a posting label ("Tag der Aufgabe zur Post", "Aufgabe zur Post", "Absendedatum",
-  "Versanddatum", "Versandt am", "Date of posting" …) that starts its text line — or, by the page's word boxes, its
-  cell in the first page's information block, right of the address window and above the salutation —, then only
-  a colon, "am" or "ist der", a weekday, "den" and the date, and nothing after it;
+  "Versanddatum", "Versandt am", "Date of posting" …) that starts its text line and opens a field there (in the
+  information block by the boxes, or with a capital under a line that is empty or ends in a full stop, a colon, a
+  date or a number — never under a line of prose that runs on into it) — or, by the page's word boxes, its cell in
+  the information block, right of the address window and above the salutation —, then only a colon, "am" or "ist
+  der", a weekday, "den" and the date, and nothing after it;
 - a field under its label, as the header's "Datum" is read: on the page right under the label by the words'
   boxes, the last thing on its row and, in the label's column, the only words there but a weekday ("Mo.,
   19.10.2026"; the address column's words to its left are another column's); or, without boxes, a label alone on
   its line over a date alone on its line (a weekday allowed);
-- a whole clause that records this letter's posting: "Dieser / Der Bescheid", "Dieses / Das Schreiben", "Dieser /
-  Der Brief" or "Dieser <a listed compound>" ("Dieser Widerspruchsbescheid"), then "wurde am <date> zur Post
-  gegeben / der Post übergeben / versandt" or "ist am <date> … worden"; "Die Aufgabe zur Post erfolgte am
-  <date>"; "Zur Post gegeben am <date>"; "This letter was posted on <date>" — after nothing but a sentence's end,
-  the salutation, a line ending in a date or a listed heading ("Hinweis:").
+- a whole clause that records this letter's posting, right under a notice's heading that starts its line
+  ("Hinweis:", "Hinweis zur Bekanntgabe:", "Bitte beachten Sie:", "Vermerk:"): "Dieser Bescheid", "Dieses
+  Schreiben", "Dieser Brief" or "Dieser <a listed compound>" ("Dieser Widerspruchsbescheid"), then "wurde am
+  <date> zur Post gegeben / der Post übergeben / versandt" or "ist am <date> … worden"; "This letter was posted on
+  <date>". The subject names this letter: plain "Der Bescheid" or "Das Schreiben" may be another decision's or an
+  example's, and a form without a subject ("Die Aufgabe zur Post erfolgte am …") names no letter, so neither
+  counts.
 
 Every other wording does not count, and the letter's date stays the start, the early side. Three review rounds
 refused named wordings one by one (a growing list of "never"), and each found new ones by other routes: an
@@ -48,8 +55,10 @@ adjective in the subject, a sentence opening with its verb (a supposition: "Erfo
 gilt …"), "Bei Aufgabe zur Post am …", a label after another decision's name in its line. An open language does not
 close by listing what is refused; closed forms refuse what nobody listed. Recall is given up on purpose: "Der
 Bescheid vom <the letter's date> wurde am … abgesandt", "Die Aufgabe zur Post erfolgt am …" (the present, which may
-be a plan), a label after other words in its line without boxes no longer count. Every false find of the reviews is
-a test that the forms refuse. The app (`ingest.plan.rule_context`) and the
+be a plan), a label after other words in its line without boxes no longer count. The first attack on the closed
+forms then found false finds by their place alone: a worked example written as whole sentences, a field in the
+remedy notice or a body table, a later letter in the same upload. So the place was closed too, and the forms that
+named no letter were dropped. Every false find of the reviews is a test that the forms refuse. The app (`ingest.plan.rule_context`) and the
 benchmark's Ordnung condition call the same function, so the benchmark measures what ships. It reaches the
 engine as `RuleContext.posting`, never through the model's `anchor_date`.
 
@@ -68,9 +77,12 @@ later than the letter's date, under guards in code:
   arrival), a declaration under private law (a dismissal, a landlord's notice, a rent increase, an operating-cost
   statement, a contract's, an insurer's, an employer's, a lease's or a bank's letter: from arrival, § 130 BGB,
   whoever sends it), a court's, a fine's (a letter filed as one, whether or not its reading cites § 67 OWiG), a
-  letter served with a yellow envelope (formal service) or, as its page says, with a Rückschein or an
-  Empfangsbekenntnis (from the receipt it proves, § 4 Abs. 2 S. 1 and § 5 VwZG; a plain Einschreiben counts from
-  its posting, § 4 Abs. 2 S. 2 VwZG, and keeps this path), a letter whose sender's procedure law is unknown, an
+  letter served with a yellow envelope (formal service) or served formally as its page says in any way it may say
+  it — by Postzustellungsurkunde (§ 3 VwZG, §§ 177 ff. ZPO), with a Rückschein or an Empfangsbekenntnis ("gegen
+  EB"), under § 3 or § 5 VwZG cited in any form, the ZPO's service sections or a Land's service law (from the
+  service, § 4 Abs. 2 S. 1 and § 5 VwZG; the switch only ever keeps the letter's date, so it may be broad; a plain
+  Einschreiben counts from its posting, on the fourth day after it, § 4 Abs. 2 S. 2 VwZG, and keeps this path), a
+  letter whose sender's procedure law is unknown, an
   e-mailed decision, or a period counted back from delivery;
 - two different posting days on the page: the earlier counts, both are named, `low` and "Please check"
   (`conflicting_dates`);
@@ -110,10 +122,12 @@ so `RuleContext.posting` stays unset and a later posting day stays the note it w
   the final split's layout had been diagnosed in codes (no letter's text read); every number it changes on
   holdout, holdout2 and the final split is re-scored, not held-out, as is every number obtained on a split
   already seen.
-- The closed forms (Addenda 5 and 6 of the fix's brief) give the same replay to the item: every posting day found
-  before is found again, the dev and test ones by the sentence form "Dieser Bescheid wurde am … zur Post gegeben",
-  the others by a field under its label. That sentence stands there after a notice's heading and its colon; the
-  short list of headings a sentence may follow ("Hinweis:", "Hinweis zur Bekanntgabe:", "Bitte beachten Sie:", …)
-  was written after a codes-only check showed that shape on those letters (no letter's text read), so the dev and
-  test numbers it keeps are re-scored too.
+- The forms were rebuilt as closed forms (a word a form does not list refuses it), and then their place was closed
+  too. Both give the same replay to the item: every posting day found before is found again, the dev and test ones
+  by the sentence form `wurde` after a heading, the others by a field under its label in the first page's
+  letterhead. The short list of headings was written after a codes-only check showed the dev and test letters'
+  form standing after a heading (no letter's text read), so the dev and test numbers it keeps are re-scored too.
+  Before the place was closed, every find was checked in codes (ids and place classes only): each field find is a
+  first-page letterhead field before the salutation, and each sentence find a form under a heading that starts
+  its line.
 - The rule it replaces stays in force where no page was read (the rules tools, a to-do added by hand).
