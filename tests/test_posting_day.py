@@ -113,6 +113,24 @@ CUES = [
         "Dieser Widerspruchsbescheid wurde am 19.10.2026 zur Post gegeben.",
         "2026-10-19",
     ),
+    # "dem" after a weekday as well as "den"
+    ("sentence-weekday-dem", "Der Bescheid wurde am Montag, dem 19.10.2026 zur Post gegeben.", "2026-10-19"),
+    # plainer field labels, where a cell starts
+    ("field-aufgegeben-am", "Aufgegeben am 19.10.2026", "2026-10-19"),
+    ("field-versand-am", "Bescheid über Grundbesitzabgaben\nVersand am 19.10.2026", "2026-10-19"),
+    ("field-versand-colon", "Steuernummer 123/456/78901   Versand: 19.10.2026", "2026-10-19"),
+    ("field-absendevermerk", "Absendevermerk: 19.10.2026", "2026-10-19"),
+    # the sender's own e-mail address beside the posting day says nothing about how the letter went out
+    (
+        "field-beside-the-sender-s-e-mail",
+        "E-Mail: poststelle@finanzamt-musterstadt.example   Tag der Aufgabe zur Post: 19.10.2026",
+        "2026-10-19",
+    ),
+    (
+        "sentence-beside-the-sender-s-address",
+        "E-Mail: poststelle@finanzamt-musterstadt.example   Der Bescheid wurde am 19.10.2026 zur Post gegeben.",
+        "2026-10-19",
+    ),
 ]
 
 
@@ -196,6 +214,44 @@ NEVER = [
         "23.10.2026                  19.10.2026\n",
     ),
     ("an-appointment-s-column", "Termin   Aufgabe zur Post\n22.10.2026   19.10.2026"),
+    # a supposition or an example, not a record of this letter's posting
+    (
+        "a-supposition-wenn",
+        "Wenn dieser Bescheid am 20.10.2026 zur Post gegeben wurde, gilt er am 24.10.2026 als bekannt gegeben.",
+    ),
+    (
+        "a-supposition-sofern",
+        "Sofern der Bescheid am 20.10.2026 zur Post gegeben wurde, gilt er am 24.10.2026 als bekannt gegeben.",
+    ),
+    (
+        "a-supposition-falls",
+        "Falls der Bescheid am 20.10.2026 zur Post gegeben wurde, gilt er am 24.10.2026 als bekannt gegeben.",
+    ),
+    ("an-example", "Beispiel: Aufgabe zur Post am 20.10.2026, Bekanntgabe am 24.10.2026."),
+    (
+        "an-example-z-b",
+        "Ein Bescheid, der z. B. am 20.10.2026 zur Post gegeben wurde, gilt am 24.10.2026 als bekannt gegeben.",
+    ),
+    (
+        "an-example-in-english",
+        "If this letter was posted on 20 October 2026, it is deemed delivered on 23 October.",
+    ),
+    # a statute's label is held to a field's checks too: the line before it, and an e-mail
+    ("a-plan-on-the-line-before", "Voraussichtlich:\nAufgabe zur Post 19.10.2026"),
+    (
+        "another-decision-follows-on-the-line-before",
+        "Der Rentenbescheid folgt mit gesonderter Post.\nAufgabe zur Post: 19.10.2026",
+    ),
+    ("a-copy-on-the-line-before", "Abschrift\nTag der Aufgabe zur Post: 19.10.2026"),
+    ("a-statute-s-label-by-e-mail", "Aufgabe zur Post: 19.10.2026 per E-Mail"),
+    ("a-sentence-by-e-mail", "Dieser Bescheid wurde am 19.10.2026 per E-Mail versandt."),
+    # a bracketed note that makes the day a plan or a bound; a second copy, posted again
+    ("planned-vsl", "Versanddatum (vsl.): 19.10.2026"),
+    ("planned-ca", "Versanddatum (ca.): 19.10.2026"),
+    ("planned-plan", "Versanddatum (Plan): 19.10.2026"),
+    ("planned-at-the-latest", "Absendetag (spätestens): 19.10.2026"),
+    ("a-second-copy", "Zur Post gegeben am 19.10.2026 (Zweitschrift)"),
+    ("posted-again", "Erneut zur Post gegeben am 19.10.2026"),
 ]
 
 
@@ -221,6 +277,15 @@ def _row(y: float, *cells: tuple[float, str]) -> list[list[Any]]:
     return boxes
 
 
+def _letterhead(value: str, left: str = "Lindenweg 4") -> tuple[str, list[list[Any]]]:
+    """A made-up DIN 5008 letterhead's two rows: the address column on the left, the posting label alone in the
+    information block's column on the right, and on the next row the address's ``left`` words beside the
+    ``value`` under the label — the text layer reads each row as one line."""
+    text = f"{'Frau Erika Beispiel':<29}Tag der Aufgabe zur Post\n{left:<29}{value}\n"
+    words = _row(0.20, (0.10, "Frau Erika Beispiel"), (0.65, "Tag der Aufgabe zur Post"))
+    return text, words + _row(0.215, (0.10, left), (0.65, value))
+
+
 #: A letterhead's information block: labels in one row, their values in the next (made up). (id, page text, the
 #: page's word boxes, the posting day it states — or None).
 TWO_ROWS = [
@@ -237,12 +302,14 @@ TWO_ROWS = [
         [],
         None,
     ),
+    # the value is the last thing on its row: a posting column with another column's value after it is left out
+    # (the letter's date counts: early, never late)
     (
         "posting-column-on-the-left",
         "Tag der Aufgabe zur Post    Bekanntgabetag\n19.10.2026                  23.10.2026\n",
         _row(0.20, (0.40, "Tag der Aufgabe zur Post"), (0.65, "Bekanntgabetag"))
         + _row(0.215, (0.40, "19.10.2026"), (0.65, "23.10.2026")),
-        "2026-10-19",
+        None,
     ),
     (
         "posting-column-on-the-left-without-boxes",
@@ -272,6 +339,74 @@ TWO_ROWS = [
         "2026-10-19",
     ),
     ("alone-under-its-label-without-boxes", "Versanddatum\n19.10.2026\n", [], "2026-10-19"),
+    # form A: a weekday (and "den") before the value, with and without boxes
+    ("a-weekday-under-the-label", *_letterhead("Mo., 19.10.2026"), "2026-10-19"),
+    ("a-weekday-and-den-under-the-label", *_letterhead("Montag, den 19.10.2026"), "2026-10-19"),
+    ("a-month-s-name-under-the-label", *_letterhead("19. Oktober 2026"), "2026-10-19"),
+    ("a-short-weekday-without-boxes", "Tag der Aufgabe zur Post\nMo., 19.10.2026\n", [], "2026-10-19"),
+    ("a-long-weekday-without-boxes", "Versanddatum\nMontag, 19.10.2026\n", [], "2026-10-19"),
+    ("den-without-boxes", "Versanddatum\nden 19.10.2026\n", [], "2026-10-19"),
+    # never: a transcript without boxes with the address's words on the value's line
+    ("address-words-without-boxes", "Tag der Aufgabe zur Post\nLindenweg 4   Mo., 19.10.2026\n", [], None),
+    # never: another field's label or date in the value's cell (a deemed delivery, a payment, an appointment, a
+    # deadline, the reader's letter), a date with words after it, two dates in the cell
+    ("another-field-s-date-in-the-cell", *_letterhead("Bekanntgabetag 23.10.2026"), None),
+    ("a-payment-deadline-in-the-cell", *_letterhead("Zahlungsfrist 21.10.2026"), None),
+    ("an-appointment-in-the-cell", *_letterhead("Gesprächstermin 19.10.2026"), None),
+    ("a-deadline-s-label-in-the-cell", *_letterhead("Frist 19.10.2026"), None),
+    ("the-reader-s-letter-in-the-cell", *_letterhead("Ihre Nachricht 18.10.2026"), None),
+    ("a-date-with-words-after-it", *_letterhead("19.10.2026 Termin 10 Uhr"), None),
+    ("a-date-with-a-time-after-it", *_letterhead("19.10.2026 10:00 Uhr"), None),
+    ("two-dates-in-the-cell", *_letterhead("19.10.2026 / 21.10.2026"), None),
+    # never: a date after "vom", "bis", "seit"
+    ("vom-before-the-value", *_letterhead("vom 19.10.2026"), None),
+    ("seit-before-the-value", *_letterhead("seit 19.10.2026"), None),
+    ("bis-before-the-value-without-boxes", "Versanddatum\nbis 19.10.2026\n", [], None),
+    # never: the address column's last words date the value ("Ihr Schreiben vom" … its date under the label), or
+    # date another letter on the value's row
+    ("another-column-s-vom", *_letterhead("12.10.2026", left="Ihr Schreiben vom"), None),
+    ("another-column-s-seit", *_letterhead("12.10.2026", left="Versichert seit"), None),
+    ("another-letter-s-date-on-the-row", *_letterhead("19.10.2026", left="Datum 12.10.2026"), None),
+    # never: a value beyond the reach under its label, nor the next column's only value
+    (
+        "a-date-far-below-the-label",
+        "Frau Erika Beispiel          Tag der Aufgabe zur Post\n                             19.10.2026\n",
+        _row(0.20, (0.10, "Frau Erika Beispiel"), (0.65, "Tag der Aufgabe zur Post"))
+        + _row(0.30, (0.65, "19.10.2026")),
+        None,
+    ),
+    (
+        "the-only-date-under-the-next-column",
+        "Tag der Aufgabe zur Post    Bekanntgabetag\n                            19.10.2026\n",
+        _row(0.20, (0.40, "Tag der Aufgabe zur Post"), (0.65, "Bekanntgabetag"))
+        + _row(0.215, (0.65, "19.10.2026")),
+        None,
+    ),
+    # the line's text is held to the same as the boxes, since a text layer may have words without a box: a date
+    # followed by more on its line, and a date after another in its cell, are never the value
+    (
+        "words-after-the-date-without-their-boxes",
+        "Frau Erika Beispiel          Tag der Aufgabe zur Post\nLindenweg 4                  19.10.2026 Termin 10 Uhr\n",
+        _row(0.20, (0.10, "Frau Erika Beispiel"), (0.65, "Tag der Aufgabe zur Post"))
+        + _row(0.215, (0.10, "Lindenweg 4"), (0.65, "19.10.2026")),
+        None,
+    ),
+    (
+        "a-date-before-it-in-its-cell-without-its-box",
+        "Frau Erika Beispiel          Tag der Aufgabe zur Post\nLindenweg 4                  19.10.2026 / 21.10.2026\n",
+        _row(0.20, (0.10, "Frau Erika Beispiel"), (0.65, "Tag der Aufgabe zur Post"))
+        + _row(0.215, (0.10, "Lindenweg 4"), (0.65, "21.10.2026")),
+        None,
+    ),
+    # never: a date in the address column, whatever stands under the label below it ("Zimmer 19")
+    (
+        "a-month-s-name-in-the-left-column",
+        "Frau Erika Beispiel          Tag der Aufgabe zur Post\n19. Oktober 2026\n                             Zimmer 19\n",
+        _row(0.20, (0.10, "Frau Erika Beispiel"), (0.65, "Tag der Aufgabe zur Post"))
+        + _row(0.215, (0.10, "19. Oktober 2026"))
+        + _row(0.23, (0.65, "Zimmer 19")),
+        None,
+    ),
     (
         "a-table-s-row",
         "Steuerart   Zeitraum   Aufgabe zur Post\nESt   2025   19.10.2026",

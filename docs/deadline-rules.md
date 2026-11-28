@@ -357,9 +357,13 @@ earlier posting day the reading names is used as before), not after the day the 
 after the letter's date (a week covers a weekend with the run of holidays from 24 December to 1 January; beyond
 it a misprint or another letter's date is likelier, and a later start costs more the further it moves), stated
 for this letter (never another decision's or another document's, the person's own letter's, an enclosure's, a
-card's or an ID's, a payment's or a deadline's, the day a letter counts as delivered, a future, planned or requested
-posting, an e-mail, goods sent, nor a date that reads two ways — in a field as in a sentence; a field's date under
-its label only right under it on the page, never another column's), and only for an authority's deemed delivery by
+card's or an ID's, a second copy's, a payment's or a deadline's, the day a letter counts as delivered, a future,
+planned, supposed ("Wenn dieser Bescheid am … zur Post gegeben wurde …"), example or requested posting, an e-mail,
+goods sent, nor a date that reads two ways — in a field as in a sentence, and the line before it is read for a plan,
+a copy or another document; a field's date under its label only right under it on the page, the last thing on its
+row with at most a weekday before it in the label's column, never another column's, another field's date stacked
+under the label or two dates in the cell; without the page's word boxes, a photo's transcript, only a date alone on
+its line under a label alone on its line), and only for an authority's deemed delivery by
 post, counted forward (never a company's period from arrival, a fine's or a court's formal service, a letter whose
 sender's law is unknown, an e-mailed decision, or a period counted back). The receipt names the posting day and its
 words (`posting_day_stated`), and gives the deadline from the letter's date as the safe date (that count's own safe
